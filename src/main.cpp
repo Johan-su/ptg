@@ -36,6 +36,13 @@ struct String
     Usize length;
 };
 
+// <S> := <E>, $
+// <E> := (<E>)
+// <E> := 
+// <E> := 0
+
+
+
 // static const char *bnf_source = 
 //     "<E> := \'(\'<E>\')\'\n" 
 //     "<E> := \'0\'";
@@ -175,9 +182,24 @@ static void move_to_endline(const char *src, Usize *cursor)
 }
 
 
-
-static String parse_non_terminal_id(const char *src, Usize *cursor)
+enum class TokenType
 {
+    INVALID,
+    TERMINAL,
+    NONTERMINAL,
+};
+
+struct BNFToken
+{
+    String data;
+    TokenType type; 
+};
+
+
+static BNFToken parse_non_terminal_id(const char *src, Usize *cursor)
+{
+    // skip first <
+    // *cursor += 1;
     String id = {};
     id.data = src + *cursor;
     id.length = 0;
@@ -190,14 +212,16 @@ static String parse_non_terminal_id(const char *src, Usize *cursor)
     }
 
     assert(id.length > 0);
-    return id;
+    BNFToken token = {};
+    token.data = id;
+    token.type = TokenType::NONTERMINAL;
+    return token;
 }
 
 
-static String parse_terminal(const char *src, Usize *cursor)
+static BNFToken parse_terminal(const char *src, Usize *cursor)
 {
     // skip first ' character
-    *cursor += 1;
     String id = {};
     id.data = src + *cursor;
     id.length = 0;
@@ -209,20 +233,25 @@ static String parse_terminal(const char *src, Usize *cursor)
         id.length += 1;
     }
 
-    return id;
+    BNFToken token = {};
+    token.data = id;
+    token.type = TokenType::TERMINAL;
+    return token;
 }
+
+
 
 
 struct Production
 {
-    String expressions[64];
+    BNFToken expressions[64];
     Usize count;
 };
 
-static void add_to_production(Production *prod, String str)
+static void add_to_production(Production *prod, BNFToken token)
 {
     assert(prod->count < ARRAY_COUNT(prod->expressions));
-    prod->expressions[prod->count++] = str;
+    prod->expressions[prod->count++] = token;
 }
 
 
@@ -233,12 +262,14 @@ static Production parse_production(const char *src, Usize *cursor)
     {
         if (src[*cursor] == '\'')
         {
+            *cursor += 1;
             add_to_production(&production, parse_terminal(src, cursor));
             expect(src, cursor, "\'");
             move_past_non_newline_whitespace(src, cursor);
         }
         else if (src[*cursor] == '<')
         {
+            *cursor += 1;
             add_to_production(&production, parse_non_terminal_id(src, cursor));
             expect(src, cursor, ">");
             move_past_non_newline_whitespace(src, cursor);
@@ -255,7 +286,7 @@ static Production parse_production(const char *src, Usize *cursor)
 
 struct BNFExpression
 {
-    String non_terminal;
+    BNFToken non_terminal;
     Production prod;
 };
 
@@ -279,6 +310,93 @@ static BNFExpression parse_BNFexpr(const char *src, Usize *cursor)
 static BNFExpression exprs[2048] = {};
 static Usize expr_count = 0;
 
+
+
+
+
+static void print_BNF(BNFExpression *expr)
+{
+    printf("<%.*s> := ", expr->non_terminal.data.length, expr->non_terminal.data.data);
+    
+    for (Usize i = 0; i < expr->prod.count; ++i)
+    {
+        String expr_str = expr->prod.expressions[i].data;
+
+        if (expr_str.length > 0)
+        {
+            if (expr->prod.expressions[i].type == TokenType::TERMINAL)
+            {
+                printf("\'%.*s\'", expr_str.length, expr_str.data);
+            }
+            else if (expr->prod.expressions[i].type == TokenType::NONTERMINAL)
+            {
+                printf("<%.*s>", expr_str.length, expr_str.data);
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+    }
+    printf("\n");
+}
+
+
+
+
+struct State
+{
+    U32 dot;
+    U32 state_id;
+    U32 expr_count;
+    BNFExpression exprs[256];
+};
+
+
+
+
+static State states[1024];
+
+
+
+
+static void print_state(State *state)
+{
+    for (Usize j = 0; j < state->expr_count; ++j)
+    {
+        BNFExpression *expr = &state->exprs[j];
+        printf("<%.*s> := ", expr->non_terminal.data.length, expr->non_terminal.data.data);
+        
+        for (Usize i = 0; i < expr->prod.count; ++i)
+        {
+            String expr_str = expr->prod.expressions[i].data;
+
+            if (i == state->dot)
+            {
+                printf(" ? ");
+            }
+
+            if (expr_str.length > 0)
+            {
+                if (expr->prod.expressions[i].type == TokenType::TERMINAL)
+                {
+                    printf("\'%.*s\'", expr_str.length, expr_str.data);
+                }
+                else if (expr->prod.expressions[i].type == TokenType::NONTERMINAL)
+                {
+                    printf("<%.*s>", expr_str.length, expr_str.data);
+                }
+                else
+                {
+                    assert(false);
+                }
+            }
+        }
+        printf("\n");
+    }
+}
+
+
 int main(void)
 {
 
@@ -293,6 +411,12 @@ int main(void)
         move_to_endline(bnf_source, &cursor);
     }
 
+
+
+    for (Usize i = 0; i < expr_count; ++i)
+    {
+        print_BNF(&exprs[i]);
+    }
 
 
    return 0; 
