@@ -45,7 +45,7 @@ struct String
 
 String make_string(const char *cstr)
 {
-    return String {.data = cstr, .length = str_len(cstr)};
+    return String {cstr, str_len(cstr)};
 }
 
 
@@ -63,8 +63,13 @@ String make_string(const char *cstr)
 
 
 
+static const char *bnf_source = 
+    "<S> := <E>\n"
+    "<E> := <T>\'+\'<E>\n"
+    "<E> := <T>\n"
+    "<T> := 'I'\n";
 
-static const char *bnf_source =
+static const char *bnf_source2 =
     "<S> := <S'>\n"
     "<S'> := <FuncDecl>\n"
     "<S'> := <VarDecl>\n"
@@ -329,7 +334,7 @@ static Usize expr_count = 0;
 
 static void print_BNF(BNFExpression *expr)
 {
-    printf("<%.*s> := ", expr->non_terminal.data.length, expr->non_terminal.data.data);
+    printf("<%.*s> := ", (int)expr->non_terminal.data.length, expr->non_terminal.data.data);
     
     for (Usize i = 0; i < expr->prod.count; ++i)
     {
@@ -339,11 +344,11 @@ static void print_BNF(BNFExpression *expr)
         {
             if (expr->prod.expressions[i].type == TokenType::TERMINAL)
             {
-                printf("\'%.*s\'", expr_str.length, expr_str.data);
+                printf("\'%.*s\'", (int)expr_str.length, expr_str.data);
             }
             else if (expr->prod.expressions[i].type == TokenType::NONTERMINAL)
             {
-                printf("<%.*s>", expr_str.length, expr_str.data);
+                printf("<%.*s>", (int)expr_str.length, expr_str.data);
             }
             else
             {
@@ -368,8 +373,7 @@ struct State
 
 
 
-static State states[1024];
-static Usize state_count = 0;
+
 
 
 
@@ -378,7 +382,7 @@ static void print_state(State *state)
     for (Usize j = 0; j < state->expr_count; ++j)
     {
         BNFExpression *expr = &state->exprs[j];
-        printf("<%.*s> := ", expr->non_terminal.data.length, expr->non_terminal.data.data);
+        printf("<%.*s> := ", (int)expr->non_terminal.data.length, expr->non_terminal.data.data);
         
         for (Usize i = 0; i < expr->prod.count; ++i)
         {
@@ -386,18 +390,18 @@ static void print_state(State *state)
 
             if (i == state->dot)
             {
-                printf(" ? ");
+                printf("? ");
             }
 
             if (expr_str.length > 0)
             {
                 if (expr->prod.expressions[i].type == TokenType::TERMINAL)
                 {
-                    printf("\'%.*s\'", expr_str.length, expr_str.data);
+                    printf("\'%.*s\'", (int)expr_str.length, expr_str.data);
                 }
                 else if (expr->prod.expressions[i].type == TokenType::NONTERMINAL)
                 {
-                    printf("<%.*s>", expr_str.length, expr_str.data);
+                    printf("<%.*s>", (int)expr_str.length, expr_str.data);
                 }
                 else
                 {
@@ -414,10 +418,6 @@ static bool is_str(String s0, String s1)
 {
     if (s0.length != s1.length) return false;
 
-    Usize s0_length = s0.length;
-    Usize s1_length = s1.length;
-
-
     for (Usize k = 0; k < s0.length; ++k)
     {
         if (s0.data[k] != s1.data[k]) return false;
@@ -428,10 +428,9 @@ static bool is_str(String s0, String s1)
 }
 
 
-static BNFExpression already_expanded_exprs[2048];
-static Usize already_expanded_count = 0;
 
-
+static State states[1024];
+static Usize state_count = 0;
 
 static void push_all_expressions_from_non_terminal_production(State *state, BNFExpression *expr_to_expand, BNFExpression *exprs, Usize expr_count)
 {
@@ -440,9 +439,9 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
     BNFToken rule_to_expand = expr_to_expand->prod.expressions[0];
     if (rule_to_expand.type != TokenType::NONTERMINAL) return;
 
-    for (Usize i = 0; i < already_expanded_count; ++i)
+    for (Usize i = 0; i < state->expr_count; ++i)
     {
-        if (is_str(rule_to_expand.data, already_expanded_exprs[i].non_terminal.data))
+        if (is_str(rule_to_expand.data, state->exprs[i].non_terminal.data))
         {
             return;
         }
@@ -454,10 +453,65 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
         if (is_str(exprs[k].non_terminal.data, rule_to_expand.data))
         {
             state->exprs[state->expr_count++] = exprs[k];   
-            already_expanded_exprs[already_expanded_count++] = exprs[k];
         }
     }
 }
+
+
+
+static void create_substates_from_state(State state_to_expand, State *state_list, Usize *state_list_count)
+{
+
+    BNFExpression expr_stack[128] = {};
+    Usize stack_count = ARRAY_COUNT(expr_stack);
+
+
+    for (Usize i = 0; i < state_to_expand.expr_count; ++i)
+    {
+        if (state_to_expand.exprs[i].prod.count == 0) continue;
+
+        expr_stack[--stack_count] = state_to_expand.exprs[i];
+        state_to_expand.exprs[i] = {};
+
+
+        for (Usize j = i; j < state_to_expand.expr_count; ++j)
+        {
+            if (state_to_expand.exprs[j].prod.expressions[state_to_expand.dot].type == TokenType::INVALID) continue;
+
+            if (is_str(expr_stack[ARRAY_COUNT(expr_stack) - 1].prod.expressions[state_to_expand.dot].data, 
+                state_to_expand.exprs[j].prod.expressions[state_to_expand.dot].data))
+            {
+                expr_stack[--stack_count] = state_to_expand.exprs[j];
+                state_to_expand.exprs[j] = {};
+            }
+
+        }
+
+
+        State *active_substate = &state_list[*state_list_count];
+        *state_list_count += 1;
+        *active_substate = {};
+        {
+            active_substate->dot = state_to_expand.dot + 1;
+
+            for (Usize j = ARRAY_COUNT(expr_stack) - 1; j > 0; --j)
+            {
+                if (expr_stack[j].prod.expressions[state_to_expand.dot].type == TokenType::INVALID) continue;
+
+                active_substate->exprs[active_substate->expr_count++] = expr_stack[j];
+            }
+            
+            for (Usize j = 0; j < ARRAY_COUNT(expr_stack); ++j) expr_stack[j] = {};
+            stack_count = ARRAY_COUNT(expr_stack);
+        }
+
+
+
+    }
+}
+
+
+
 
 int main(void)
 {
@@ -473,40 +527,31 @@ int main(void)
     }
 
 
-    State state = {};
+    State *state = &states[0];
     {
+        state->dot = 0;
+        state->state_id = 0;
+        state->expr_count = 0;
+        state->exprs[state->expr_count++] = exprs[0];
 
-        state.dot = 0;
-        state.state_id = 0;
-        state.expr_count = 0;
-        state.exprs[expr_count++] = exprs[0];
-
-
-
-        push_all_expressions_from_non_terminal_production(&state, &exprs[0], exprs, expr_count);
-
-
-        for (Usize i = 0; i < ARRAY_COUNT(state.exprs); ++i)
+        for (Usize i = 0; i < ARRAY_COUNT(state->exprs); ++i)
         {
-            push_all_expressions_from_non_terminal_production(&state, &state.exprs[i], exprs, expr_count);
+            push_all_expressions_from_non_terminal_production(state, &state->exprs[i], exprs, expr_count);
         }
-
-
-        // for (Usize i = 1; i < ARRAY_COUNT(exprs); ++i)
-        // {
-        //     if (state.exprs[i])
-        // }
-
-
     }
+    create_substates_from_state(*state, states, &state_count);
 
 
 
-
-    for (Usize i = 0; i < expr_count; ++i)
+    for (Usize i = 0; i < ARRAY_COUNT(states); ++i)
     {
-        print_BNF(&exprs[i]);
+        if (states[i].expr_count > 0)
+        {
+            printf("------------\n");
+            print_state(&states[i]);
+        }
     }
+
 
 
    return 0; 
