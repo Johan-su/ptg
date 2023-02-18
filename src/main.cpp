@@ -304,6 +304,7 @@ static Production parse_production(const char *src, Usize *cursor)
 
 struct BNFExpression
 {
+    Usize dot;
     BNFToken non_terminal;
     Production prod;
 };
@@ -364,7 +365,6 @@ static void print_BNF(BNFExpression *expr)
 
 struct State
 {
-    U32 dot;
     U32 state_id;
     U32 expr_count;
     BNFExpression exprs[256];
@@ -382,15 +382,19 @@ static void print_state(State *state)
     for (Usize j = 0; j < state->expr_count; ++j)
     {
         BNFExpression *expr = &state->exprs[j];
-        printf("<%.*s> := ", (int)expr->non_terminal.data.length, expr->non_terminal.data.data);
+        printf("<%.*s> :=", (int)expr->non_terminal.data.length, expr->non_terminal.data.data);
         
         for (Usize i = 0; i < expr->prod.count; ++i)
         {
             String expr_str = expr->prod.expressions[i].data;
 
-            if (i == state->dot)
+            if (i == expr->dot)
             {
-                printf("? ");
+                printf(" ? ");
+            }
+            else
+            {
+                printf(" ");
             }
 
             if (expr_str.length > 0)
@@ -408,6 +412,10 @@ static void print_state(State *state)
                     assert(false);
                 }
             }
+        }
+        if (expr->dot >= expr->prod.count)
+        {
+            printf(" ?");
         }
         printf("\n");
     }
@@ -434,9 +442,7 @@ static Usize state_count = 0;
 
 static void push_all_expressions_from_non_terminal_production(State *state, BNFExpression *expr_to_expand, BNFExpression *exprs, Usize expr_count)
 {
-    // TODO(Johan): check for repeat copies of production rules
-
-    BNFToken rule_to_expand = expr_to_expand->prod.expressions[0];
+    BNFToken rule_to_expand = expr_to_expand->prod.expressions[expr_to_expand->dot];
     if (rule_to_expand.type != TokenType::NONTERMINAL) return;
 
     for (Usize i = 0; i < state->expr_count; ++i)
@@ -459,54 +465,39 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
 
 
 
-static void create_substates_from_state(State state_to_expand, State *state_list, Usize *state_list_count)
+static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize expr_count, BNFExpression *all_expr_list, Usize all_expr_count, State *state_list, Usize *state_list_count)
 {
-
-    BNFExpression expr_stack[128] = {};
-    Usize stack_count = ARRAY_COUNT(expr_stack);
-
-
-    for (Usize i = 0; i < state_to_expand.expr_count; ++i)
+    for (Usize i = 0; i < expr_count; ++i)
     {
-        if (state_to_expand.exprs[i].prod.count == 0) continue;
+        if (expr_list_to_expand[i].non_terminal.data.length == 0) continue;
 
-        expr_stack[--stack_count] = state_to_expand.exprs[i];
-        state_to_expand.exprs[i] = {};
+        BNFExpression active_expr = expr_list_to_expand[i];
 
-
-        for (Usize j = i; j < state_to_expand.expr_count; ++j)
+        for (Usize j = i; j < expr_count; ++j)
         {
-            if (state_to_expand.exprs[j].prod.expressions[state_to_expand.dot].type == TokenType::INVALID) continue;
+            BNFExpression *expr = &expr_list_to_expand[j]; 
 
-            if (is_str(expr_stack[ARRAY_COUNT(expr_stack) - 1].prod.expressions[state_to_expand.dot].data, 
-                state_to_expand.exprs[j].prod.expressions[state_to_expand.dot].data))
+            if (expr->prod.expressions[expr->dot].type == TokenType::INVALID) continue;
+
+            if (is_str(active_expr.prod.expressions[expr->dot].data, 
+                expr->prod.expressions[expr->dot].data))
             {
-                expr_stack[--stack_count] = state_to_expand.exprs[j];
-                state_to_expand.exprs[j] = {};
+
+                assert(*state_list_count < ARRAY_COUNT(states));
+                State *active_substate = &state_list[*state_list_count];
+                
+                active_substate->exprs[active_substate->expr_count] = *expr;
+                active_substate->exprs[active_substate->expr_count].dot += 1;
+                active_substate->expr_count += 1;
+                if (expr->prod.expressions[expr->dot].type == TokenType::TERMINAL && expr->prod.expressions[active_substate->exprs[active_substate->expr_count].dot].type == TokenType::NONTERMINAL)
+                {
+                    push_all_expressions_from_non_terminal_production(active_substate, expr, all_expr_list, all_expr_count);
+                }
             }
 
+
         }
-
-
-        State *active_substate = &state_list[*state_list_count];
         *state_list_count += 1;
-        *active_substate = {};
-        {
-            active_substate->dot = state_to_expand.dot + 1;
-
-            for (Usize j = ARRAY_COUNT(expr_stack) - 1; j > 0; --j)
-            {
-                if (expr_stack[j].prod.expressions[state_to_expand.dot].type == TokenType::INVALID) continue;
-
-                active_substate->exprs[active_substate->expr_count++] = expr_stack[j];
-            }
-            
-            for (Usize j = 0; j < ARRAY_COUNT(expr_stack); ++j) expr_stack[j] = {};
-            stack_count = ARRAY_COUNT(expr_stack);
-        }
-
-
-
     }
 }
 
@@ -529,7 +520,6 @@ int main(void)
 
     State *state = &states[0];
     {
-        state->dot = 0;
         state->state_id = 0;
         state->expr_count = 0;
         state->exprs[state->expr_count++] = exprs[0];
@@ -538,16 +528,23 @@ int main(void)
         {
             push_all_expressions_from_non_terminal_production(state, &state->exprs[i], exprs, expr_count);
         }
+        state_count += 1;
     }
-    create_substates_from_state(*state, states, &state_count);
 
+
+    // create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
+    for (Usize i = 0; i < state_count; ++i)
+    {
+        create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
+    }
 
 
     for (Usize i = 0; i < ARRAY_COUNT(states); ++i)
     {
         if (states[i].expr_count > 0)
         {
-            printf("------------\n");
+
+            printf("State %llu ------------\n", i);
             print_state(&states[i]);
         }
     }
