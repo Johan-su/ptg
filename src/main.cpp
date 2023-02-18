@@ -28,13 +28,26 @@ do                        \
 
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
+static Usize str_len(const char *str)
+{
+    Usize c = 0;
 
+    while (str[c] != '\0') c += 1;
+
+    return c;
+}
 
 struct String
 {
     const char *data;
     Usize length;
 };
+
+String make_string(const char *cstr)
+{
+    return String {.data = cstr, .length = str_len(cstr)};
+}
+
 
 // <S> := <E>, $
 // <E> := (<E>)
@@ -356,7 +369,7 @@ struct State
 
 
 static State states[1024];
-
+static Usize state_count = 0;
 
 
 
@@ -397,9 +410,57 @@ static void print_state(State *state)
 }
 
 
+static bool is_str(String s0, String s1)
+{
+    if (s0.length != s1.length) return false;
+
+    Usize s0_length = s0.length;
+    Usize s1_length = s1.length;
+
+
+    for (Usize k = 0; k < s0.length; ++k)
+    {
+        if (s0.data[k] != s1.data[k]) return false;
+        assert(s0.data[k] != '\0');
+        assert(s1.data[k] != '\0');
+    }
+    return true;
+}
+
+
+static BNFExpression already_expanded_exprs[2048];
+static Usize already_expanded_count = 0;
+
+
+
+static void push_all_expressions_from_non_terminal_production(State *state, BNFExpression *expr_to_expand, BNFExpression *exprs, Usize expr_count)
+{
+    // TODO(Johan): check for repeat copies of production rules
+
+    BNFToken rule_to_expand = expr_to_expand->prod.expressions[0];
+    if (rule_to_expand.type != TokenType::NONTERMINAL) return;
+
+    for (Usize i = 0; i < already_expanded_count; ++i)
+    {
+        if (is_str(rule_to_expand.data, already_expanded_exprs[i].non_terminal.data))
+        {
+            return;
+        }
+    }
+
+
+    for (Usize k = 0; k < expr_count; ++k)
+    {
+        if (is_str(exprs[k].non_terminal.data, rule_to_expand.data))
+        {
+            state->exprs[state->expr_count++] = exprs[k];   
+            already_expanded_exprs[already_expanded_count++] = exprs[k];
+        }
+    }
+}
+
 int main(void)
 {
-
 
     for (Usize cursor = 0; bnf_source[cursor] != '\0' ;)
     {
@@ -410,6 +471,35 @@ int main(void)
         exprs[expr_count++] = expr;
         move_to_endline(bnf_source, &cursor);
     }
+
+
+    State state = {};
+    {
+
+        state.dot = 0;
+        state.state_id = 0;
+        state.expr_count = 0;
+        state.exprs[expr_count++] = exprs[0];
+
+
+
+        push_all_expressions_from_non_terminal_production(&state, &exprs[0], exprs, expr_count);
+
+
+        for (Usize i = 0; i < ARRAY_COUNT(state.exprs); ++i)
+        {
+            push_all_expressions_from_non_terminal_production(&state, &state.exprs[i], exprs, expr_count);
+        }
+
+
+        // for (Usize i = 1; i < ARRAY_COUNT(exprs); ++i)
+        // {
+        //     if (state.exprs[i])
+        // }
+
+
+    }
+
 
 
 
