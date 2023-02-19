@@ -406,6 +406,7 @@ struct State
 
 static bool is_BNFExpression(BNFExpression *b0, BNFExpression *b1)
 {
+    if (b0->dot != b1->dot) return false;
     if (b0->non_terminal.type != b1->non_terminal.type) return false;
     if (b0->prod.count != b1->prod.count) return false;
     if (!is_str(b0->non_terminal.data, b1->non_terminal.data)) return false;
