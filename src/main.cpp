@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <string.h>
+
 typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
@@ -15,18 +17,34 @@ typedef int32_t I32;
 typedef int64_t I64;
 
 
-#define assert(condition) \
-do                        \
-{                         \
-    if (!(condition))     \
-    {                     \
-        __debugbreak();   \
-    }                     \
+#define assert(condition)                                                                         \
+do                                                                                                \
+{                                                                                                 \
+    if (!(condition))                                                                             \
+    {                                                                                             \
+        __debugbreak();                                                                           \
+        fprintf(stderr, "ERROR: assertion failed [%s] at %s:%d", #condition, __FILE__, __LINE__); \
+    }                                                                                             \
 } while (0);
 
 
 
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
+
+
+
+template<typename T>
+static T *alloc(Usize amount)
+{
+    return (T *)malloc(sizeof(T) * amount);
+}
+
+
+
+
+
+
+
 
 static Usize str_len(const char *str)
 {
@@ -480,36 +498,49 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
     BNFToken rule_to_expand = expr_to_expand->prod.expressions[expr_to_expand->dot];
     if (rule_to_expand.type != TokenType::NONTERMINAL) return;
 
-    for (Usize i = 0; i < state->expr_count; ++i)
-    {
-        if (is_str(rule_to_expand.data, state->exprs[i].non_terminal.data))
-        {
-            return;
-        }
-    }
 
-
-    for (Usize k = 0; k < expr_count; ++k)
+    for (Usize i = 0; i < expr_count; ++i)
     {
-        if (is_str(exprs[k].non_terminal.data, rule_to_expand.data))
+        if (is_str(exprs[i].non_terminal.data, rule_to_expand.data))
         {
-            state->exprs[state->expr_count++] = exprs[k];   
+            bool is_already_expanded = false;
+            for (Usize j = 0; j < state->expr_count; ++j)
+            {
+                if (is_BNFExpression(&state->exprs[j], &exprs[i]))
+                {
+                    is_already_expanded = true;
+                    break;
+                }
+            }
+            if (!is_already_expanded) 
+            {
+                state->exprs[state->expr_count++] = exprs[i];
+            }
         }
     }
 }
 
-//TODO(Johan): remove, only used in create_substates_from_list 
+
 static State g_active_substate = {};
 
-
-static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize expr_count, BNFExpression *all_expr_list, Usize all_expr_count, State *state_list, Usize *state_list_count)
+static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, Usize expr_count,
+    BNFExpression *all_expr_list, Usize all_expr_count,
+    State *state_list, Usize *state_list_count)
 {
+    assert(expr_count < 1024);
+    BNFExpression *expr_list_to_expand = alloc<BNFExpression>(expr_count);
+    memcpy(expr_list_to_expand, expr_list_to_expand_raw, expr_count * sizeof(expr_list_to_expand_raw[0]));
+    
+
     for (Usize i = 0; i < expr_count; ++i)
     {
         if (expr_list_to_expand[i].non_terminal.data.length == 0) continue;
 
         BNFExpression active_expr = expr_list_to_expand[i];
 
+        assert(*state_list_count < ARRAY_COUNT(states));
+        // State *active_substate = &state_list[*state_list_count];
+        State *active_substate = &g_active_substate;
         for (Usize j = i; j < expr_count; ++j)
         {
             BNFExpression *expr = &expr_list_to_expand[j]; 
@@ -522,19 +553,26 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize
                 continue;
             }
 
-            assert(*state_list_count < ARRAY_COUNT(states));
-            // State *active_substate = &state_list[*state_list_count];
-            State *active_substate = &g_active_substate;
 
-            
             active_substate->exprs[active_substate->expr_count] = *expr;
             active_substate->exprs[active_substate->expr_count].dot += 1;
-            active_substate->expr_count += 1;
-            if (expr->prod.expressions[expr->dot].type == TokenType::TERMINAL && expr->prod.expressions[active_substate->exprs[active_substate->expr_count].dot].type == TokenType::NONTERMINAL)
-            {
-                push_all_expressions_from_non_terminal_production(active_substate, expr, all_expr_list, all_expr_count);
-            }
 
+            BNFExpression *last_expr = &active_substate->exprs[active_substate->expr_count];
+            active_substate->expr_count += 1;
+
+            // bool terminal_before = expr->prod.expressions[expr->dot].type == TokenType::TERMINAL; 
+
+            if (last_expr->prod.expressions[last_expr->dot].type == TokenType::NONTERMINAL)
+            {
+                push_all_expressions_from_non_terminal_production(active_substate, last_expr, all_expr_list, all_expr_count);
+            }
+            *expr = {};
+
+
+        }
+        bool state_was_created = active_substate->expr_count > 0;
+        if (state_was_created)
+        {
             bool state_already_exists = false;
             for (Usize k = 0; k < *state_list_count; ++k)
             {
@@ -548,11 +586,12 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize
             if (!state_already_exists)
             {
                 state_list[*state_list_count] = *active_substate;
+                *state_list_count += 1;
             }
-
         }
-        *state_list_count += 1;
+        *active_substate = {};
     }
+    free(expr_list_to_expand);
 }
 
 
@@ -584,22 +623,20 @@ int main(void)
         state_count += 1;
     }
 
-
+    
     // create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
     // for (Usize i = 0; i < state_count; ++i)
     {
         create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
+        create_substates_from_list(states[1].exprs, states[1].expr_count, exprs, expr_count, states, &state_count);
+        create_substates_from_list(states[2].exprs, states[2].expr_count, exprs, expr_count, states, &state_count);
     }
 
 
-    for (Usize i = 0; i < ARRAY_COUNT(states); ++i)
+    for (Usize i = 0; i < state_count; ++i)
     {
-        if (states[i].expr_count > 0)
-        {
-
-            printf("State %llu ------------\n", i);
-            print_state(&states[i]);
-        }
+        printf("State %llu ------------\n", i);
+        print_state(&states[i]);
     }
 
 
