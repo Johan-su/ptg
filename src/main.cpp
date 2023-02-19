@@ -49,6 +49,20 @@ String make_string(const char *cstr)
 }
 
 
+static bool is_str(String s0, String s1)
+{
+    if (s0.length != s1.length) return false;
+
+    for (Usize k = 0; k < s0.length; ++k)
+    {
+        if (s0.data[k] != s1.data[k]) return false;
+        assert(s0.data[k] != '\0');
+        assert(s1.data[k] != '\0');
+    }
+    return true;
+}
+
+
 // <S> := <E>, $
 // <E> := (<E>)
 // <E> := 
@@ -372,7 +386,39 @@ struct State
 
 
 
+static bool is_BNFExpression(BNFExpression *b0, BNFExpression *b1)
+{
+    if (b0->non_terminal.type != b1->non_terminal.type) return false;
+    if (b0->prod.count != b1->prod.count) return false;
+    if (!is_str(b0->non_terminal.data, b1->non_terminal.data)) return false;
 
+
+    for (Usize i = 0; i < b0->prod.count; ++i)
+    {
+        if (b0->prod.expressions[i].type != b1->prod.expressions[i].type) return false;
+        if(!is_str(b0->prod.expressions[i].data, b1->prod.expressions[i].data)) return false;
+    }
+
+    return true;
+}
+
+
+static bool is_state(State *s0, State *s1)
+{
+    if (s0->expr_count != s1->expr_count) return false;
+
+
+    for (Usize i = 0; i < s0->expr_count; ++i)
+    {
+        BNFExpression *ex0 = &s0->exprs[i]; 
+        BNFExpression *ex1 = &s1->exprs[i]; 
+
+
+        if (!is_BNFExpression(ex0, ex1)) return false;
+
+    }
+    return true;
+}
 
 
 
@@ -422,18 +468,7 @@ static void print_state(State *state)
 }
 
 
-static bool is_str(String s0, String s1)
-{
-    if (s0.length != s1.length) return false;
 
-    for (Usize k = 0; k < s0.length; ++k)
-    {
-        if (s0.data[k] != s1.data[k]) return false;
-        assert(s0.data[k] != '\0');
-        assert(s1.data[k] != '\0');
-    }
-    return true;
-}
 
 
 
@@ -463,6 +498,8 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
     }
 }
 
+//TODO(Johan): remove, only used in create_substates_from_list 
+static State g_active_substate = {};
 
 
 static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize expr_count, BNFExpression *all_expr_list, Usize all_expr_count, State *state_list, Usize *state_list_count)
@@ -479,22 +516,39 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize
 
             if (expr->prod.expressions[expr->dot].type == TokenType::INVALID) continue;
 
-            if (is_str(active_expr.prod.expressions[expr->dot].data, 
+            if (!is_str(active_expr.prod.expressions[expr->dot].data, 
                 expr->prod.expressions[expr->dot].data))
             {
+                continue;
+            }
 
-                assert(*state_list_count < ARRAY_COUNT(states));
-                State *active_substate = &state_list[*state_list_count];
-                
-                active_substate->exprs[active_substate->expr_count] = *expr;
-                active_substate->exprs[active_substate->expr_count].dot += 1;
-                active_substate->expr_count += 1;
-                if (expr->prod.expressions[expr->dot].type == TokenType::TERMINAL && expr->prod.expressions[active_substate->exprs[active_substate->expr_count].dot].type == TokenType::NONTERMINAL)
+            assert(*state_list_count < ARRAY_COUNT(states));
+            // State *active_substate = &state_list[*state_list_count];
+            State *active_substate = &g_active_substate;
+
+            
+            active_substate->exprs[active_substate->expr_count] = *expr;
+            active_substate->exprs[active_substate->expr_count].dot += 1;
+            active_substate->expr_count += 1;
+            if (expr->prod.expressions[expr->dot].type == TokenType::TERMINAL && expr->prod.expressions[active_substate->exprs[active_substate->expr_count].dot].type == TokenType::NONTERMINAL)
+            {
+                push_all_expressions_from_non_terminal_production(active_substate, expr, all_expr_list, all_expr_count);
+            }
+
+            bool state_already_exists = false;
+            for (Usize k = 0; k < *state_list_count; ++k)
+            {
+                if (is_state(active_substate, &state_list[k]))
                 {
-                    push_all_expressions_from_non_terminal_production(active_substate, expr, all_expr_list, all_expr_count);
+                    state_already_exists = true;
+                    break;
                 }
             }
 
+            if (!state_already_exists)
+            {
+                state_list[*state_list_count] = *active_substate;
+            }
 
         }
         *state_list_count += 1;
@@ -506,7 +560,6 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand, Usize
 
 int main(void)
 {
-
     for (Usize cursor = 0; bnf_source[cursor] != '\0' ;)
     {
         assert(expr_count < ARRAY_COUNT(exprs));
@@ -524,7 +577,7 @@ int main(void)
         state->expr_count = 0;
         state->exprs[state->expr_count++] = exprs[0];
 
-        for (Usize i = 0; i < ARRAY_COUNT(state->exprs); ++i)
+        for (Usize i = 0; i < state->expr_count; ++i)
         {
             push_all_expressions_from_non_terminal_production(state, &state->exprs[i], exprs, expr_count);
         }
@@ -533,7 +586,7 @@ int main(void)
 
 
     // create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
-    for (Usize i = 0; i < state_count; ++i)
+    // for (Usize i = 0; i < state_count; ++i)
     {
         create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
     }
