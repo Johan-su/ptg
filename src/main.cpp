@@ -95,13 +95,13 @@ static bool is_str(String s0, String s1)
 
 
 
-static const char *bnf_source = 
+static const char *bnf_source2 = 
     "<S> := <E>\n"
     "<E> := <T>\'+\'<E>\n"
     "<E> := <T>\n"
     "<T> := 'I'\n";
 
-static const char *bnf_source2 =
+static const char *bnf_source =
     "<S> := <S'>\n"
     "<S'> := <FuncDecl>\n"
     "<S'> := <VarDecl>\n"
@@ -545,6 +545,7 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, U
         assert(*state_list_count < ARRAY_COUNT(states));
         // State *active_substate = &state_list[*state_list_count];
         State *active_substate = &g_active_substate;
+        *active_substate = {};
         for (Usize j = i; j < expr_count; ++j)
         {
             BNFExpression *expr = &expr_list_to_expand[j]; 
@@ -593,7 +594,6 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, U
                 *state_list_count += 1;
             }
         }
-        *active_substate = {};
     }
     free(expr_list_to_expand);
 }
