@@ -494,16 +494,17 @@ static void print_state(State *state)
 static State states[1024];
 static Usize state_count = 0;
 
-static void push_all_expressions_from_non_terminal_production(State *state, BNFExpression *expr_to_expand, BNFExpression *exprs, Usize expr_count)
+static void push_all_expressions_from_non_terminal_production(State *state, BNFExpression *exprs, Usize expr_count)
 {
-    BNFToken rule_to_expand = expr_to_expand->prod.expressions[expr_to_expand->dot];
-    if (rule_to_expand.type != TokenType::NONTERMINAL) return;
-
-
-    for (Usize i = 0; i < expr_count; ++i)
+    for (Usize k = 0; k < state->expr_count; ++k)
     {
-        if (is_str(exprs[i].non_terminal.data, rule_to_expand.data))
+        BNFToken rule_to_expand = state->exprs[k].prod.expressions[state->exprs[k].dot];
+        if (rule_to_expand.type != TokenType::NONTERMINAL) continue;;
+
+        for (Usize i = 0; i < expr_count; ++i)
         {
+            if (!is_str(exprs[i].non_terminal.data, rule_to_expand.data)) continue;
+
             bool is_already_expanded = false;
             for (Usize j = 0; j < state->expr_count; ++j)
             {
@@ -518,6 +519,8 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
                 state->exprs[state->expr_count++] = exprs[i];
             }
         }
+        Usize dot = 0;
+        rule_to_expand = state->exprs[k].prod.expressions[dot];
     }
 }
 
@@ -548,7 +551,7 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, U
 
             if (expr->prod.expressions[expr->dot].type == TokenType::INVALID) continue;
 
-            if (!is_str(active_expr.prod.expressions[expr->dot].data, 
+            if (!is_str(active_expr.prod.expressions[active_expr.dot].data, 
                 expr->prod.expressions[expr->dot].data))
             {
                 continue;
@@ -565,7 +568,7 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, U
 
             if (last_expr->prod.expressions[last_expr->dot].type == TokenType::NONTERMINAL)
             {
-                push_all_expressions_from_non_terminal_production(active_substate, last_expr, all_expr_list, all_expr_count);
+                push_all_expressions_from_non_terminal_production(active_substate, all_expr_list, all_expr_count);
             }
             *expr = {};
 
@@ -617,16 +620,17 @@ int main(void)
         state->expr_count = 0;
         state->exprs[state->expr_count++] = exprs[0];
 
-        for (Usize i = 0; i < state->expr_count; ++i)
-        {
-            push_all_expressions_from_non_terminal_production(state, &state->exprs[i], exprs, expr_count);
-        }
+        push_all_expressions_from_non_terminal_production(state, exprs, expr_count);
         state_count += 1;
     }
 
     
     // create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
-    // for (Usize i = 0; i < state_count; ++i)
+    for (Usize i = 0; i < state_count; ++i)
+    {
+        create_substates_from_list(states[i].exprs, states[i].expr_count, exprs, expr_count, states, &state_count);
+    }
+    if (0)
     {
         create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
         create_substates_from_list(states[1].exprs, states[1].expr_count, exprs, expr_count, states, &state_count);
@@ -634,6 +638,7 @@ int main(void)
         create_substates_from_list(states[3].exprs, states[3].expr_count, exprs, expr_count, states, &state_count);
         create_substates_from_list(states[4].exprs, states[4].expr_count, exprs, expr_count, states, &state_count);
     }
+
 
 
     for (Usize i = 0; i < state_count; ++i)
