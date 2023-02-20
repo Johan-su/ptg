@@ -631,6 +631,8 @@ int main(void)
         create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
         create_substates_from_list(states[1].exprs, states[1].expr_count, exprs, expr_count, states, &state_count);
         create_substates_from_list(states[2].exprs, states[2].expr_count, exprs, expr_count, states, &state_count);
+        create_substates_from_list(states[3].exprs, states[3].expr_count, exprs, expr_count, states, &state_count);
+        create_substates_from_list(states[4].exprs, states[4].expr_count, exprs, expr_count, states, &state_count);
     }
 
 
