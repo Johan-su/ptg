@@ -337,6 +337,7 @@ static Production parse_production(const char *src, Usize *cursor)
 struct BNFExpression
 {
     Usize dot;
+    BNFToken look_ahead;
     BNFToken non_terminal;
     Production prod;
 };
@@ -407,8 +408,10 @@ struct State
 static bool is_BNFExpression(BNFExpression *b0, BNFExpression *b1)
 {
     if (b0->dot != b1->dot) return false;
+    if (b0->look_ahead.type != b1->look_ahead.type) return false;
     if (b0->non_terminal.type != b1->non_terminal.type) return false;
     if (b0->prod.count != b1->prod.count) return false;
+    if (!is_str(b0->look_ahead.data, b1->look_ahead.data)) return false;
     if (!is_str(b0->non_terminal.data, b1->non_terminal.data)) return false;
 
 
@@ -482,6 +485,7 @@ static void print_state(State *state)
         {
             printf(" ?");
         }
+        printf(" [%.*s]", (int)expr->look_ahead.data.length, expr->look_ahead.data.data);
         printf("\n");
     }
 }
@@ -498,8 +502,9 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
 {
     for (Usize k = 0; k < state->expr_count; ++k)
     {
+        BNFExpression *rule_expand_expr = &state->exprs[k];
         BNFToken rule_to_expand = state->exprs[k].prod.expressions[state->exprs[k].dot];
-        if (rule_to_expand.type != TokenType::NONTERMINAL) continue;;
+        if (rule_to_expand.type != TokenType::NONTERMINAL) continue;
 
         for (Usize i = 0; i < expr_count; ++i)
         {
@@ -516,10 +521,25 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
             }
             if (!is_already_expanded) 
             {
-                state->exprs[state->expr_count++] = exprs[i];
+                BNFExpression expr = exprs[i];
+                if (rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1].type == TokenType::TERMINAL)
+                {
+                    expr.look_ahead = rule_expand_expr->look_ahead; 
+                }
+                else if (rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1].type == TokenType::NONTERMINAL)
+                {
+                    expr.look_ahead = rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1]; 
+                }
+                else
+                {
+                    assert(false);
+                }
+
+                state->exprs[state->expr_count++] = expr;
             }
         }
         Usize dot = 0;
+        rule_expand_expr = &state->exprs[k];
         rule_to_expand = state->exprs[k].prod.expressions[dot];
     }
 }
@@ -528,8 +548,8 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
 static State g_active_substate = {};
 
 static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, Usize expr_count,
-    BNFExpression *all_expr_list, Usize all_expr_count,
-    State *state_list, Usize *state_list_count)
+                                       BNFExpression *all_expr_list, Usize all_expr_count,
+                                       State *state_list, Usize *state_list_count)
 {
     assert(expr_count < 1024);
     BNFExpression *expr_list_to_expand = alloc<BNFExpression>(expr_count);
@@ -565,7 +585,6 @@ static void create_substates_from_list(BNFExpression *expr_list_to_expand_raw, U
             BNFExpression *last_expr = &active_substate->exprs[active_substate->expr_count];
             active_substate->expr_count += 1;
 
-            // bool terminal_before = expr->prod.expressions[expr->dot].type == TokenType::TERMINAL; 
 
             if (last_expr->prod.expressions[last_expr->dot].type == TokenType::NONTERMINAL)
             {
