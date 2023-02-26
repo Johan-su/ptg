@@ -94,14 +94,32 @@ static bool is_str(String s0, String s1)
 
 
 
+static const char *bnf_source2 =
+    "<S> := <E>\n"
+    "<E> := \'a\'\n"
+    "<E> := <E>\'t\'\n"
+    ;
 
 static const char *bnf_source = 
     "<S> := <E>\n"
+    "<E> := <T>\'+\'\n"
+    "<E> := <T>\n"
+    "<T> := <ID>\n"
+    "<ID> := \'a\'\n"
+    "<ID> := \'b\'\n"
+    ;
+
+
+static const char *bnf_source5 = 
+    "<S> := <E>\n"
     "<E> := <T>\'+\'<E>\n"
     "<E> := <T>\n"
-    "<T> := 'I'\n";
+    "<T> := <ID>\n"
+    "<ID> := \'a\'\n"
+    "<ID> := \'b\'\n"
+    ;
 
-static const char *bnf_source2 =
+static const char *bnf_source4 =
     "<S> := <S'>\n"
     "<S'> := <FuncDecl>\n"
     "<S'> := <VarDecl>\n"
@@ -110,31 +128,31 @@ static const char *bnf_source2 =
     "<FuncDecl> := <Id>\'(\'<Id>\')\' \'=\' <E>\n"
     "<VarDecl> := <Id> \'=\' <E>\n"
     "<Id> := \'a\'\n"
-    "<Id> := \'b\'\n"
-    "<Id> := \'c\'\n"
-    "<Id> := \'d\'\n"
-    "<Id> := \'e\'\n"
-    "<Id> := \'f\'\n"
-    "<Id> := \'g\'\n"
-    "<Id> := \'h\'\n"
-    "<Id> := \'i\'\n"
-    "<Id> := \'j\'\n"
-    "<Id> := \'k\'\n"
-    "<Id> := \'l\'\n"
-    "<Id> := \'m\'\n"
-    "<Id> := \'n\'\n"
-    "<Id> := \'o\'\n"
-    "<Id> := \'p\'\n"
-    "<Id> := \'q\'\n"
-    "<Id> := \'r\'\n"
-    "<Id> := \'s\'\n"
-    "<Id> := \'t\'\n"
-    "<Id> := \'u\'\n"
-    "<Id> := \'v\'\n"
-    "<Id> := \'w\'\n"
-    "<Id> := \'x\'\n"
-    "<Id> := \'y\'\n"
-    "<Id> := \'z\'\n"
+    // "<Id> := \'b\'\n"
+    // "<Id> := \'c\'\n"
+    // "<Id> := \'d\'\n"
+    // "<Id> := \'e\'\n"
+    // "<Id> := \'f\'\n"
+    // "<Id> := \'g\'\n"
+    // "<Id> := \'h\'\n"
+    // "<Id> := \'i\'\n"
+    // "<Id> := \'j\'\n"
+    // "<Id> := \'k\'\n"
+    // "<Id> := \'l\'\n"
+    // "<Id> := \'m\'\n"
+    // "<Id> := \'n\'\n"
+    // "<Id> := \'o\'\n"
+    // "<Id> := \'p\'\n"
+    // "<Id> := \'q\'\n"
+    // "<Id> := \'r\'\n"
+    // "<Id> := \'s\'\n"
+    // "<Id> := \'t\'\n"
+    // "<Id> := \'u\'\n"
+    // "<Id> := \'v\'\n"
+    // "<Id> := \'w\'\n"
+    // "<Id> := \'x\'\n"
+    // "<Id> := \'y\'\n"
+    // "<Id> := \'z\'\n"
     //
     "<E> := \'(\'<E>\')\'\n"
     "<E> := <Number>\n"
@@ -150,20 +168,20 @@ static const char *bnf_source2 =
     //
     "<FuncCall> := <Id>\'(\'<E>\')\'\n"
     "<Var> := <Id>\n"
-    "<Number> := <Digit><Number'>\n"
-    "<Number'> := <Digit><Number'>\n"
-    "<Number'> := \n"
+    "<Number> := <Digit>\n"
+    "<Number> := <Number><Digit>\n"
     //
     "<Digit> := \'0\'\n"
-    "<Digit> := \'1\'\n"
-    "<Digit> := \'2\'\n"
-    "<Digit> := \'3\'\n"
-    "<Digit> := \'4\'\n"
-    "<Digit> := \'5\'\n"
-    "<Digit> := \'6\'\n"
-    "<Digit> := \'7\'\n"
-    "<Digit> := \'8\'\n"
-    "<Digit> := \'9\'\n";
+    // "<Digit> := \'1\'\n"
+    // "<Digit> := \'2\'\n"
+    // "<Digit> := \'3\'\n"
+    // "<Digit> := \'4\'\n"
+    // "<Digit> := \'5\'\n"
+    // "<Digit> := \'6\'\n"
+    // "<Digit> := \'7\'\n"
+    // "<Digit> := \'8\'\n"
+    // "<Digit> := \'9\'\n"
+    ;
 
 //"<Number> := [0-9]+ || [0.9]+.[0-9]*"
 
@@ -336,10 +354,10 @@ static Production parse_production(const char *src, Usize *cursor)
 
 struct BNFExpression
 {
-    Usize dot;
-    BNFToken look_ahead;
     BNFToken non_terminal;
     Production prod;
+    Usize dot;
+    BNFToken look_ahead;
 };
 
 
@@ -397,10 +415,10 @@ static void print_BNF(BNFExpression *expr)
 struct State
 {
     BNFToken creation_token;
-    U32 state_id;
-    U32 expr_count;
-    State *edges[256];
-    BNFExpression exprs[256];
+    U16 state_id;
+    U16 expr_count;
+    State *edges[512];
+    BNFExpression exprs[512];
 };
 
 
@@ -504,13 +522,18 @@ static void print_state(State *state)
 
 
 
-static State states[1024];
+static State states[256];
 static Usize state_count = 0;
 
 static void push_all_expressions_from_non_terminal_production(State *state, BNFExpression *exprs, Usize expr_count)
 {
     for (Usize k = 0; k < state->expr_count; ++k)
     {
+        if (!(state->expr_count < ARRAY_COUNT(state->exprs)))
+        {
+            print_state(state);
+            assert(false);
+        }
         assert(state->expr_count < ARRAY_COUNT(state->exprs));
         BNFExpression *rule_expand_expr = &state->exprs[k];
         BNFToken rule_to_expand = state->exprs[k].prod.expressions[state->exprs[k].dot];
@@ -541,17 +564,6 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
             }
             if (!is_already_expanded) 
             {
-                BNFExpression expr = exprs[i];
-                if (rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1].type == TokenType::TERMINAL)
-                {
-                    expr.look_ahead = rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1]; 
-                }
-                else
-                {
-                    assert(rule_expand_expr->look_ahead.type != TokenType::INVALID);
-                    expr.look_ahead = rule_expand_expr->look_ahead; 
-                }
-
                 state->exprs[state->expr_count++] = expr;
             }
         }
@@ -568,7 +580,12 @@ static void create_substates_from_state(State *state,
                                        BNFExpression *all_expr_list, Usize all_expr_count,
                                        State *state_list, Usize *state_list_count)
 {
-    assert(state->expr_count < 1024);
+    if (!(state->expr_count < ARRAY_COUNT(state->exprs)))
+    {
+        print_state(state);
+        assert(false);
+    }
+    assert(state->expr_count < ARRAY_COUNT(state->exprs));
     BNFExpression *expr_list_to_expand = alloc<BNFExpression>(state->expr_count);
     memcpy(expr_list_to_expand, &state->exprs, state->expr_count * sizeof(state->exprs[0]));
     
@@ -684,17 +701,19 @@ int main(void)
 
     
     // create_substates_from_list(states[0].exprs, states[0].expr_count, exprs, expr_count, states, &state_count);
-    for (Usize i = 0; i < state_count; ++i)
-    {
-        create_substates_from_state(&state[i], g_exprs, g_expr_count, states, &state_count);
-    }
-    if (0)
+    // for (Usize i = 0; i < state_count; ++i)
+    // {
+    //     create_substates_from_state(&state[i], g_exprs, g_expr_count, states, &state_count);
+    // }
+    if (1)
     {
         create_substates_from_state(&state[0], g_exprs, g_expr_count, states, &state_count);
-        create_substates_from_state(&state[1], g_exprs, g_expr_count, states, &state_count);
-        create_substates_from_state(&state[2], g_exprs, g_expr_count, states, &state_count);
-        create_substates_from_state(&state[3], g_exprs, g_expr_count, states, &state_count);
-        create_substates_from_state(&state[4], g_exprs, g_expr_count, states, &state_count);
+        // create_substates_from_state(&state[1], g_exprs, g_expr_count, states, &state_count);
+        // create_substates_from_state(&state[2], g_exprs, g_expr_count, states, &state_count);
+        // create_substates_from_state(&state[3], g_exprs, g_expr_count, states, &state_count);
+        // create_substates_from_state(&state[4], g_exprs, g_expr_count, states, &state_count);
+        // create_substates_from_state(&state[5], g_exprs, g_expr_count, states, &state_count);
+        // create_substates_from_state(&state[6], g_exprs, g_expr_count, states, &state_count);
     }
 
 
