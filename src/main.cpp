@@ -563,7 +563,7 @@ static void create_substates_from_state(State *state,
     memcpy(expr_list_to_expand, &state->exprs, state->expr_count * sizeof(state->exprs[0]));
     
 
-    for (Usize i = 0; i < g_expr_count; ++i)
+    for (Usize i = 0; i < state->expr_count; ++i)
     {
         if (expr_list_to_expand[i].non_terminal.data.length == 0) continue;
 
