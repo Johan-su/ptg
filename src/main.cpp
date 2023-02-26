@@ -520,10 +520,20 @@ static void push_all_expressions_from_non_terminal_production(State *state, BNFE
         {
             if (!is_str(exprs[i].non_terminal.data, rule_to_expand.data)) continue;
 
+            BNFExpression expr = exprs[i];
+            if (rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1].type == TokenType::TERMINAL)
+            {
+                expr.look_ahead = rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1]; 
+            }
+            else
+            {
+                assert(rule_expand_expr->look_ahead.type != TokenType::INVALID);
+                expr.look_ahead = rule_expand_expr->look_ahead; 
+            }
             bool is_already_expanded = false;
             for (Usize j = 0; j < state->expr_count; ++j)
             {
-                if (is_BNFExpression(&state->exprs[j], &exprs[i]))
+                if (is_BNFExpression(&state->exprs[j], &expr))
                 {
                     is_already_expanded = true;
                     break;
