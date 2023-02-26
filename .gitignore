@@ -1,2 +1,5 @@
 /build
+*.dot
+*.svg
+*.png
 .vscode
