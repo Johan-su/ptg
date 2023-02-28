@@ -881,13 +881,13 @@ static void table_set(Lexer *lex, TableOperation *table, Usize table_size,
         {
             if (table[index].type == op.type)
             {
-                printf("ERROR: %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
+                printf("ERROR: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 printf("--Change ambiguous grammar\n");
                 exit(1);
             }
             else
             {
-                printf("WARNING: %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
+                printf("WARNING: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 assert(false && "Handle shift/reduce conflict");
             }
 
@@ -1028,6 +1028,128 @@ static void print_parse_table(TableOperation *parse_table, Usize table_width, Us
     }
 }
 
+
+static I64 get_ir_item_index(Lexer *lex, String d)
+{
+    if (is_str(d, make_string("$")))
+    {
+        return lex->terminal_count + 1;
+    }
+    for (Usize i = 0; i < lex->terminal_count; ++i)
+    {
+        if (is_str(d, lex->terminals[i]))
+        {
+            return i;
+        }
+    }
+    for (Usize i = 0; i < lex->non_terminal_count; ++i)
+    {
+        if (is_str(d, lex->non_terminals[i]))
+        {
+            return lex->terminal_count + 1 + i;
+        }
+    }
+    return -1;
+}
+
+
+static String sub_string(String str, Usize start, Usize end)
+{
+    String s = {};
+
+    if (start > str.length || end > str.length || start > end)
+    {
+        return s;
+    }
+
+    s.data = &str.data[start];
+    s.length = end - start + 1;
+
+    return s;    
+}
+
+
+static bool parse_str_with_parse_table(const char *str, TableOperation *table, Lexer *lex)
+{
+    Usize table_width = 1 + lex->terminal_count + lex->non_terminal_count;
+
+    Usize state_stack_size = 1024; 
+    Usize *state_stack = alloc<Usize>(state_stack_size);
+    Usize state_count = state_stack_size;
+
+    Usize symbol_stack_size = 1024; 
+    I64 *symbol_stack = alloc<I64>(symbol_stack_size);
+    Usize symbol_count = symbol_stack_size;
+
+
+    state_stack[--state_count] = g_states[0].state_id;
+
+
+    String str_to_parse = make_string(str);
+
+    bool active = true;
+    bool succeded_parsing = true;
+    Usize index = 0;
+    while (active)
+    {
+        I64 lookahead_lr_index = get_ir_item_index(lex, sub_string(str_to_parse, index, index));
+
+
+        TableOperation op = table[lookahead_lr_index + state_stack[state_count++] * table_width];
+        switch (op.type)
+        {
+            case TableOperationType::INVALID:
+            {
+                active = false;
+                succeded_parsing = false;
+            } break;
+            case TableOperationType::SHIFT:
+            {
+                symbol_stack[--symbol_count] = lookahead_lr_index;
+                state_stack[--state_count] = op.arg;
+            } break;
+            case TableOperationType::REDUCE:
+            {
+                assert(op.arg >= 0 && op.arg < lex->expr_count);
+                symbol_count++;
+
+                for (Usize i = 0; i < lex->exprs[op.arg].prod.count)
+                {
+                    
+                }
+
+                lex->exprs[op.arg];
+            } break;
+            case TableOperationType::GOTO:
+            {
+
+            } break;
+            case TableOperationType::ACCEPT:
+            {
+
+            } break;
+
+            default:
+            {
+                assert(false && "unreachable");
+                active = false;
+                succeded_parsing = false;
+            }
+        }
+    }
+
+
+
+
+    free(state_stack);
+    free(symbol_stack);
+    return succeded_parsing;
+}
+
+
+
+
+
 int main(void)
 {
     for (Usize cursor = 0; bnf_source[cursor] != '\0' ;)
@@ -1082,6 +1204,8 @@ int main(void)
 
     TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
     print_parse_table(table, g_lexer.non_terminal_count + g_lexer.terminal_count + 1, g_state_count);
+
+    parse_str_with_parse_table("i+i", table, &g_lexer);
 
    return 0; 
 }
