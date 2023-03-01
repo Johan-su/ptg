@@ -128,16 +128,34 @@ static const char *bnf_source0 =
     // "<E> := \'9\'\n"
     ;
 
+static const char *bnf_source =
+    "<S> := <Number>\n"
+    "<Number> := <Number><Digit>\n"
+    "<Number> := <Digit>\n"
+    //
+    "<Digit> := \'0\'\n"
+    // "<Digit> := \'1\'\n"
+    // "<Digit> := \'2\'\n"
+    // "<Digit> := \'3\'\n"
+    // "<Digit> := \'4\'\n"
+    // "<Digit> := \'5\'\n"
+    // "<Digit> := \'6\'\n"
+    // "<Digit> := \'7\'\n"
+    // "<Digit> := \'8\'\n"
+    // "<Digit> := \'9\'\n"
+    ;
+
+
 
 // example in https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
-static const char *bnf_source1 = 
+static const char *bnf_source15 = 
     "<S> := <E>\n"
     "<E> := <T>\'+\'<E>\n"
     "<E> := <T>\n"
     "<T> := \'I\'\n"
     ;
 
-static const char *bnf_source =
+static const char *bnf_source4 =
     "<S> := <S'>\n"
     "<S'> := <FuncDecl>\n"
     "<S'> := <VarDecl>\n"
@@ -146,31 +164,31 @@ static const char *bnf_source =
     "<FuncDecl> := <Id>\'(\'<Id>\')\' \'=\' <E>\n"
     "<VarDecl> := <Id> \'=\' <E>\n"
     "<Id> := \'a\'\n"
-    // "<Id> := \'b\'\n"
-    // "<Id> := \'c\'\n"
-    // "<Id> := \'d\'\n"
-    // "<Id> := \'e\'\n"
-    // "<Id> := \'f\'\n"
-    // "<Id> := \'g\'\n"
-    // "<Id> := \'h\'\n"
-    // "<Id> := \'i\'\n"
-    // "<Id> := \'j\'\n"
-    // "<Id> := \'k\'\n"
-    // "<Id> := \'l\'\n"
-    // "<Id> := \'m\'\n"
-    // "<Id> := \'n\'\n"
-    // "<Id> := \'o\'\n"
-    // "<Id> := \'p\'\n"
-    // "<Id> := \'q\'\n"
-    // "<Id> := \'r\'\n"
-    // "<Id> := \'s\'\n"
-    // "<Id> := \'t\'\n"
-    // "<Id> := \'u\'\n"
-    // "<Id> := \'v\'\n"
-    // "<Id> := \'w\'\n"
-    // "<Id> := \'x\'\n"
-    // "<Id> := \'y\'\n"
-    // "<Id> := \'z\'\n"
+    "<Id> := \'b\'\n"
+    "<Id> := \'c\'\n"
+    "<Id> := \'d\'\n"
+    "<Id> := \'e\'\n"
+    "<Id> := \'f\'\n"
+    "<Id> := \'g\'\n"
+    "<Id> := \'h\'\n"
+    "<Id> := \'i\'\n"
+    "<Id> := \'j\'\n"
+    "<Id> := \'k\'\n"
+    "<Id> := \'l\'\n"
+    "<Id> := \'m\'\n"
+    "<Id> := \'n\'\n"
+    "<Id> := \'o\'\n"
+    "<Id> := \'p\'\n"
+    "<Id> := \'q\'\n"
+    "<Id> := \'r\'\n"
+    "<Id> := \'s\'\n"
+    "<Id> := \'t\'\n"
+    "<Id> := \'u\'\n"
+    "<Id> := \'v\'\n"
+    "<Id> := \'w\'\n"
+    "<Id> := \'x\'\n"
+    "<Id> := \'y\'\n"
+    "<Id> := \'z\'\n"
     //
     "<E> := \'(\'<E>\')\'\n"
     "<E> := <Number>\n"
@@ -186,19 +204,19 @@ static const char *bnf_source =
     //
     "<FuncCall> := <Id>\'(\'<E>\')\'\n"
     "<Var> := <Id>\n"
-    "<Number> := <Digit>\n"
     "<Number> := <Number><Digit>\n"
+    "<Number> := <Digit>\n"
     //
     "<Digit> := \'0\'\n"
-    // "<Digit> := \'1\'\n"
-    // "<Digit> := \'2\'\n"
-    // "<Digit> := \'3\'\n"
-    // "<Digit> := \'4\'\n"
-    // "<Digit> := \'5\'\n"
-    // "<Digit> := \'6\'\n"
-    // "<Digit> := \'7\'\n"
-    // "<Digit> := \'8\'\n"
-    // "<Digit> := \'9\'\n"
+    "<Digit> := \'1\'\n"
+    "<Digit> := \'2\'\n"
+    "<Digit> := \'3\'\n"
+    "<Digit> := \'4\'\n"
+    "<Digit> := \'5\'\n"
+    "<Digit> := \'6\'\n"
+    "<Digit> := \'7\'\n"
+    "<Digit> := \'8\'\n"
+    "<Digit> := \'9\'\n"
     ;
 
 //"<Number> := [0-9]+ || [0.9]+.[0-9]*"
@@ -885,6 +903,10 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
             {
                 printf("ERROR: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 printf("--Change ambiguous grammar\n");
+                fprint_BNF(stdout, meta_expr_table[index]);
+                printf("\n");
+                fprint_BNF(stdout, expr);
+                printf("\n");
                 exit(1);
             }
             else
@@ -923,7 +945,6 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
                     }
                 }
 
-                // TODO(Johan) maybe > instead of >=
                 if (table_expr_precedence < new_expr_precedence)
                 {
                     printf("Choosing table %s resolution\n", op_to_str(table[index].type));
@@ -1026,7 +1047,6 @@ static TableOperation *create_parse_table_from_states(Lexer *lex, State *state_l
                 TableOperation op {};
                 op.type = TableOperationType::REDUCE;
 
-                // assuming all relevant productions are in state 0 (the starting state)
                 I64 index = -1;
                 {
                     BNFExpression *expr_copy = alloc<BNFExpression>(1);
@@ -1048,6 +1068,7 @@ static TableOperation *create_parse_table_from_states(Lexer *lex, State *state_l
                 }
 
                 op.arg = index;
+                //TODO(Johan) state->creation_token or expr->look_ahead?
                 table_set(lex, parse_table, meta_expr_table, table_size, expr, expr->look_ahead, state->state_id, op);
             }
         }        
@@ -1153,6 +1174,7 @@ static bool parse_str_with_parse_table(const char *str, TableOperation *table, L
             case TableOperationType::INVALID:
             {
                 printf("%s, %zu\n", op_to_str(op.type), op.arg);
+                printf("lookahead_ir_index: %d, state: %d\n", lookahead_lr_index, state_stack[state_count]);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1276,7 +1298,7 @@ int main(void)
     TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
     print_parse_table(table, g_lexer.non_terminal_count + g_lexer.terminal_count + 1, g_state_count);
 
-    parse_str_with_parse_table("1+1+1+1$", table, &g_lexer);
+    parse_str_with_parse_table("00$", table, &g_lexer);
 
    return 0; 
 }
