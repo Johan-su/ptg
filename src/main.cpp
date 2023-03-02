@@ -146,7 +146,7 @@ static const char *bnf_source =
     ;
 
 
-
+// https://cs.stackexchange.com/questions/152523/how-is-the-lookahead-for-an-lr1-automaton-computed
 // example in https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
 static const char *bnf_source15 = 
     "<S> := <E>\n"
