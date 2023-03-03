@@ -1067,7 +1067,7 @@ static TableOperation *create_parse_table_from_states(Lexer *lex, State *state_l
                     free(expr_copy);
                 }
 
-                op.arg = index;
+                op.arg = (Usize)index;
                 //TODO(Johan) state->creation_token or expr->look_ahead?
                 table_set(lex, parse_table, meta_expr_table, table_size, expr, expr->look_ahead, state->state_id, op);
             }
@@ -1174,7 +1174,7 @@ static bool parse_str_with_parse_table(const char *str, TableOperation *table, L
             case TableOperationType::INVALID:
             {
                 printf("%s, %zu\n", op_to_str(op.type), op.arg);
-                printf("lookahead_ir_index: %d, state: %d\n", lookahead_lr_index, state_stack[state_count]);
+                printf("lookahead_ir_index: %lld, state: %zu\n", lookahead_lr_index, state_stack[state_count]);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1192,7 +1192,7 @@ static bool parse_str_with_parse_table(const char *str, TableOperation *table, L
 
                 BNFExpression *current_expr = &lex->exprs[op.arg];
                 Production *current_prod = &current_expr->prod; 
-                for (I64 i = current_prod->count - 1; i >= 0; --i)
+                for (I64 i = (I64)current_prod->count - 1; i >= 0; --i)
                 {
                     I64 lr_item = symbol_stack[symbol_count++];
                     I64 prod_lr = get_ir_item_index(lex, current_prod->expressions[i].data);
@@ -1239,6 +1239,78 @@ static bool parse_str_with_parse_table(const char *str, TableOperation *table, L
     return succeded_parsing;
 }
 
+struct FirstSet
+{
+    Usize terminal_count;
+    String terminals[128];
+};
+
+
+static void add_element_to_first_set(FirstSet *first_array, I64 lr_index, String terminal)
+{
+    assert(lr_index >= 0 && (Usize)lr_index < g_lexer.terminal_count + 1 + g_lexer.non_terminal_count);
+
+    FirstSet *set = &first_array[lr_index];
+
+
+    for (Usize i = 0; i < set->terminal_count; ++i)
+    {
+        // skip adding if the terminal is already in the set
+        if (is_str(set->terminals[i], terminal))
+        {
+            return;
+        }
+    }
+    set->terminals[set->terminal_count++] = terminal;
+}
+
+
+
+static void set_first(Lexer *lex, FirstSet *first_array)
+{
+    Usize stack_size = 2048 * 50;
+    String *non_terminal_stack = alloc<String>(stack_size);
+    memset(non_terminal_stack, 0, sizeof(*non_terminal_stack) * stack_size);
+    Usize stack_count = stack_size;
+
+    for (Usize i = 0; i < lex->terminal_count; ++i)
+    {
+        String terminal = lex->terminals[i];
+
+        for (Usize j = 0; j < lex->expr_count; ++j)
+        {
+            BNFExpression *expr = &lex->exprs[j];
+            if (is_str(expr->prod.expressions[0].data, terminal))
+            {
+                assert(stack_count > 0);
+                non_terminal_stack[--stack_count] = expr->non_terminal.data;
+            }
+        }
+
+        while (stack_count < stack_size)
+        {
+            String non_terminal = non_terminal_stack[stack_count++];
+            if (non_terminal.length == 0) goto end;
+
+
+            I64 lr_index = get_ir_item_index(lex, non_terminal);
+            assert(lr_index != -1);
+            add_element_to_first_set(first_array, lr_index, terminal);
+
+            for (Usize j = 0; j < lex->expr_count; ++j)
+            {
+                BNFExpression *expr = &lex->exprs[j];
+                if (is_str(expr->prod.expressions[0].data, non_terminal))
+                {
+                    assert(stack_count > 0);
+                    non_terminal_stack[--stack_count] = expr->non_terminal.data;
+                }
+            }
+        }
+    }
+    end:
+    free(non_terminal_stack);
+}
 
 
 
@@ -1255,6 +1327,11 @@ int main(void)
         move_to_endline(bnf_source, &cursor);
     }
 
+    Usize set_size = g_lexer.terminal_count + 1 + g_lexer.non_terminal_count;
+    FirstSet *first = alloc<FirstSet>(set_size);
+    memset(first, 0, sizeof(*first) * set_size);
+
+    set_first(&g_lexer, first);
 
     State *state = &g_states[0];
     {
