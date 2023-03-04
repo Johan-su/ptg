@@ -2,7 +2,6 @@
 #include <assert.h>
 
 
-// example in https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
 static const char *bnf_source =
     "<S> := <S'>\n"
     "<S'> := <FuncDecl>\n"

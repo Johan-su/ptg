@@ -13,13 +13,13 @@ cd ./build
 if not exist tests mkdir tests
 cd ./tests
 
-%CLANG% ../../src/main.cpp ../../tests/bnf1.cpp %FLAGS% -o bnf1.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf2.cpp %FLAGS% -o bnf2.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf3.cpp %FLAGS% -o bnf3.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf4.cpp %FLAGS% -o bnf4.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf5.cpp %FLAGS% -o bnf5.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf6.cpp %FLAGS% -o bnf6.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf7.cpp %FLAGS% -o bnf7.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf1.cpp %FLAGS% -Wno-unused-function -o bnf1.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf2.cpp %FLAGS% -Wno-unused-function -o bnf2.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf3.cpp %FLAGS% -Wno-unused-function -o bnf3.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf4.cpp %FLAGS% -Wno-unused-function -o bnf4.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf5.cpp %FLAGS% -Wno-unused-function -o bnf5.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf6.cpp %FLAGS% -Wno-unused-function -o bnf6.exe
+%CLANG% ../../src/main.cpp ../../tests/bnf7.cpp %FLAGS% -Wno-unused-function -o bnf7.exe
 
 bnf1.exe
 bnf2.exe

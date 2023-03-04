@@ -1200,6 +1200,12 @@ static bool parse_str_with_parse_table(const char *str, TableOperation *table, L
     return succeded_parsing;
 }
 
+struct Expr
+{
+    Expr *exprs[20];
+    Usize expr_count;
+    I64 lr_item;
+};
 
 
 static void add_element_to_first_set(FirstSet *first_array, I64 lr_index, String terminal)
@@ -1342,7 +1348,7 @@ static void create_all_substates(State *state_list, U32 *state_count, Lexer *lex
     }
 }
 
-
+#ifdef COMPILEMAIN
 static Lexer g_lexer = {
     .exprs = {},
     .expr_count = 0,
@@ -1356,7 +1362,55 @@ static State g_states[256];
 static U32 g_state_count = 0;
 
 static const char *bnf_source =
-    "<S> := <Number>\n"
+    "<S> := <S'>\n"
+    "<S'> := <FuncDecl>\n"
+    "<S'> := <VarDecl>\n"
+    "<S'> := <E>\n"
+    "<S'> := \n"
+    //
+    "<FuncDecl> := <Id>\'(\'<Id>\')\' \'=\' <E>\n"
+    "<VarDecl> := <Id> \'=\' <E>\n"
+    "<Id> := \'a\'\n"
+    "<Id> := \'b\'\n"
+    "<Id> := \'c\'\n"
+    "<Id> := \'d\'\n"
+    "<Id> := \'e\'\n"
+    "<Id> := \'f\'\n"
+    "<Id> := \'g\'\n"
+    "<Id> := \'h\'\n"
+    "<Id> := \'i\'\n"
+    "<Id> := \'j\'\n"
+    "<Id> := \'k\'\n"
+    "<Id> := \'l\'\n"
+    "<Id> := \'m\'\n"
+    "<Id> := \'n\'\n"
+    "<Id> := \'o\'\n"
+    "<Id> := \'p\'\n"
+    "<Id> := \'q\'\n"
+    "<Id> := \'r\'\n"
+    "<Id> := \'s\'\n"
+    "<Id> := \'t\'\n"
+    "<Id> := \'u\'\n"
+    "<Id> := \'v\'\n"
+    "<Id> := \'w\'\n"
+    "<Id> := \'x\'\n"
+    "<Id> := \'y\'\n"
+    "<Id> := \'z\'\n"
+    //
+    "<E> := \'(\'<E>\')\'\n"
+    "<E> := <Number>\n"
+    "<E> := <Var>\n"
+    "<E> := <FuncCall>\n"
+    //
+    "<E> := \'-\'<E>\n"
+    "<E> := \'+\'<E>\n"
+    "<E> := <E> \'/\' <E>\n"
+    "<E> := <E> \'*\' <E>\n"
+    "<E> := <E> \'-\' <E>\n"
+    "<E> := <E> \'+\' <E>\n"
+    //
+    "<FuncCall> := <Id>\'(\'<E>\')\'\n"
+    "<Var> := <Id>\n"
     "<Number> := <Number><Digit>\n"
     "<Number> := <Digit>\n"
     //
@@ -1372,42 +1426,32 @@ static const char *bnf_source =
     "<Digit> := \'9\'\n"
     ;
 
-#ifdef COMPILEMAIN 
 int main(void)
 {
-#else
-int DEBUG_LIB_MAIN_DO_NOT_USE(void)
-{ return 0;
-#endif
-    (void)graph_from_state_list;
-    (void)print_parse_table;
     parse_bnf_src(&g_lexer, bnf_source);
 
     create_all_substates(g_states, &g_state_count, &g_lexer);
 
 
-
-
-    if (0)
-    {
-        for (Usize i = 0; i < g_state_count; ++i)
-        {
-            printf("State %llu ------------\n", i);
-            print_state(&g_states[i]);
-        }
-    }
-    FILE *f = fopen("input.dot", "w");
-    graph_from_state_list(f, g_states, g_state_count);
-    fclose(f);
     TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
-    if (0)
-    {
-        print_parse_table(table, g_lexer.non_terminal_count + g_lexer.terminal_count + 1, g_state_count);
-    }
-    parse_str_with_parse_table("000$", table, &g_lexer);
+    create_syntax_tree_with_table("f(a)=sin(g)*a+5000", TableOperation *table, Lexer *lex)
+
+
+
+
+    // for (Usize i = 0; i < g_state_count; ++i)
+    // {
+    //     printf("State %llu ------------\n", i);
+    //     print_state(&g_states[i]);
+    // }
+    // FILE *f = fopen("input.dot", "w");
+    // graph_from_state_list(f, g_states, g_state_count);
+    // fclose(f);
+    // parse_str_with_parse_table("000$", table, &g_lexer);
 
    return 0; 
 }
+#endif
 
 
 
