@@ -78,5 +78,12 @@ int main(void)
     TableOperation *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
 
 
+    assert(parse("$", table, lexer));
     assert(parse("1+1$", table, lexer));
+    assert(parse("1*1$", table, lexer));
+    assert(parse("1/1$", table, lexer));
+    assert(parse("1-1$", table, lexer));
+    assert(parse("-1+1$", table, lexer));
+    assert(parse("--1*1$", table, lexer));
+    assert(parse("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)$", table, lexer));
 }
