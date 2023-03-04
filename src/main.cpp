@@ -1304,13 +1304,13 @@ static void set_first(Lexer *lex)
     Usize table_size = lex->terminal_count + 1 + lex->non_terminal_count;
     bool *checked_table = alloc<bool>(table_size);
 
-    for (Usize i = 0; i < table_size; ++i)
-    {
-        checked_table[i] = false;
-    }
 
     for (Usize i = 0; i < lex->terminal_count; ++i)
     {
+        for (Usize j = 0; j < table_size; ++j)
+        {
+            checked_table[j] = false;
+        }
         String terminal = lex->terminals[i];
 
         for (Usize j = 0; j < lex->expr_count; ++j)
