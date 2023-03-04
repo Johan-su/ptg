@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#define NOMAIN
-#include "../src/main.cpp"
-#undef assert
+#include "../src/ptg.hpp"
 #include <assert.h>
 
 
@@ -24,16 +21,17 @@ static const char *bnf_source =
 
 int main(void)
 {
-    parse_bnf_src(&g_lexer, bnf_source);
-    create_all_substates(g_states, &g_state_count, &g_lexer);
-    TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
-    
-    assert(parse_str_with_parse_table("$", table, &g_lexer));
-    assert(parse_str_with_parse_table("1+1$", table, &g_lexer));
-    assert(parse_str_with_parse_table("5+1$", table, &g_lexer));
-    assert(parse_str_with_parse_table("5+4+3+2+1$", table, &g_lexer));
-    assert(parse_str_with_parse_table("+4+3+2+$", table, &g_lexer));
-    assert(parse_str_with_parse_table("+$", table, &g_lexer));
-    assert(!parse_str_with_parse_table("00$", table, &g_lexer));
-    assert(!parse_str_with_parse_table("5120412505721057214901279+4$", table, &g_lexer));
+    Lexer *lexer = create_lexer_from_bnf(bnf_source);
+    unsigned int state_count;
+    State *state_list = create_state_list(lexer, &state_count);
+    TableOperation *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
+
+    assert(parse("$", table, lexer));
+    assert(parse("1+1$", table, lexer));
+    assert(parse("5+1$", table, lexer));
+    assert(parse("5+4+3+2+1$", table, lexer));
+    assert(parse("+4+3+2+$", table, lexer));
+    assert(parse("+$", table, lexer));
+    assert(!parse("00$", table, lexer));
+    assert(!parse("5120412505721057214901279+4$", table, lexer));
 }

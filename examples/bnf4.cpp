@@ -1,9 +1,7 @@
-#define NOMAIN
-#include "../src/main.cpp"
-#undef assert
+#include "../src/ptg.hpp"
 #include <assert.h>
 
-
+#include <stdio.h>
 
 static const char *bnf_source =
     "<S> := <Number>\n"
@@ -24,19 +22,25 @@ static const char *bnf_source =
 
 int main(void)
 {
-    parse_bnf_src(&g_lexer, bnf_source);
-    create_all_substates(g_states, &g_state_count, &g_lexer);
-    TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
-    
-    assert(!parse_str_with_parse_table("$", table, &g_lexer));
-    assert(!parse_str_with_parse_table("abcd$", table, &g_lexer));
-    assert(parse_str_with_parse_table("0$", table, &g_lexer));
-    assert(parse_str_with_parse_table("00$", table, &g_lexer));
-    assert(parse_str_with_parse_table("1$", table, &g_lexer));
-    assert(parse_str_with_parse_table("11$", table, &g_lexer));
-    assert(parse_str_with_parse_table("2492328501235823580$", table, &g_lexer));
-    assert(parse_str_with_parse_table("323123$", table, &g_lexer));
-    assert(parse_str_with_parse_table("6364859$", table, &g_lexer));
-    assert(parse_str_with_parse_table("123456$", table, &g_lexer));
+    Lexer *lexer = create_lexer_from_bnf(bnf_source);
+    unsigned int state_count;
+    State *state_list = create_state_list(lexer, &state_count);
+    TableOperation *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
+
+    FILE *f = fopen("input.dot", "w");
+    write_states_as_graph(f, state_list, state_count);
+    fclose(f);
+    // print_table(table, lexer, state_count);
+
+    assert(!parse("$", table, lexer));
+    assert(!parse("abcd$", table, lexer));
+    assert(parse("0$", table, lexer));
+    assert(parse("00$", table, lexer));
+    assert(parse("1$", table, lexer));
+    assert(parse("11$", table, lexer));
+    assert(parse("2492328501235823580$", table, lexer));
+    assert(parse("323123$", table, lexer));
+    assert(parse("6364859$", table, lexer));
+    assert(parse("123456$", table, lexer));
 
 }

@@ -108,70 +108,6 @@ static bool is_str(String s0, String s1)
 // https://cs.stackexchange.com/questions/152523/how-is-the-lookahead-for-an-lr1-automaton-computed
 // https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
 
-static const char *bnf_source6 =
-    "<S> := <S'>\n"
-    "<S'> := <FuncDecl>\n"
-    "<S'> := <VarDecl>\n"
-    "<S'> := <E>\n"
-    "<S'> := \n"
-    //
-    "<FuncDecl> := <Id>\'(\'<Id>\')\' \'=\' <E>\n"
-    "<VarDecl> := <Id> \'=\' <E>\n"
-    "<Id> := \'a\'\n"
-    "<Id> := \'b\'\n"
-    "<Id> := \'c\'\n"
-    "<Id> := \'d\'\n"
-    "<Id> := \'e\'\n"
-    "<Id> := \'f\'\n"
-    "<Id> := \'g\'\n"
-    "<Id> := \'h\'\n"
-    "<Id> := \'i\'\n"
-    "<Id> := \'j\'\n"
-    "<Id> := \'k\'\n"
-    "<Id> := \'l\'\n"
-    "<Id> := \'m\'\n"
-    "<Id> := \'n\'\n"
-    "<Id> := \'o\'\n"
-    "<Id> := \'p\'\n"
-    "<Id> := \'q\'\n"
-    "<Id> := \'r\'\n"
-    "<Id> := \'s\'\n"
-    "<Id> := \'t\'\n"
-    "<Id> := \'u\'\n"
-    "<Id> := \'v\'\n"
-    "<Id> := \'w\'\n"
-    "<Id> := \'x\'\n"
-    "<Id> := \'y\'\n"
-    "<Id> := \'z\'\n"
-    //
-    "<E> := \'(\'<E>\')\'\n"
-    "<E> := <Number>\n"
-    "<E> := <Var>\n"
-    "<E> := <FuncCall>\n"
-    //
-    "<E> := \'-\'<E>\n"
-    "<E> := \'+\'<E>\n"
-    "<E> := <E> \'/\' <E>\n"
-    "<E> := <E> \'*\' <E>\n"
-    "<E> := <E> \'-\' <E>\n"
-    "<E> := <E> \'+\' <E>\n"
-    //
-    "<FuncCall> := <Id>\'(\'<E>\')\'\n"
-    "<Var> := <Id>\n"
-    "<Number> := <Number><Digit>\n"
-    "<Number> := <Digit>\n"
-    //
-    "<Digit> := \'0\'\n"
-    "<Digit> := \'1\'\n"
-    "<Digit> := \'2\'\n"
-    "<Digit> := \'3\'\n"
-    "<Digit> := \'4\'\n"
-    "<Digit> := \'5\'\n"
-    "<Digit> := \'6\'\n"
-    "<Digit> := \'7\'\n"
-    "<Digit> := \'8\'\n"
-    "<Digit> := \'9\'\n"
-    ;
 
 //"<Number> := [0-9]+ || [0.9]+.[0-9]*"
 
@@ -795,68 +731,54 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
 }
 
 
-static void graph_from_state_list(State *state_list, Usize state_count)
+static void graph_from_state_list(FILE *f, State *state_list, Usize state_count)
 {
+    fprintf(f, "digraph G {\n");
+
+    for (Usize i = 0; i < state_count; ++i)
     {
-        FILE *f = fopen("input.dot", "w");
-        if (f == nullptr)
+        State *state = &state_list[i];
+        fprintf(f, "n%u [label=\"", state->state_id);
+        fprintf(f, "State %u\n", state->state_id);
+        fprint_state(f, state);
+        fprintf(f, "\"];\n");
+        for (Usize j = 0; j < state->expr_count; ++j)
         {
-            fprintf(stderr, "ERROR: failed to create file");
-            return;
-        }
-
-        fprintf(f, "digraph G {\n");
-
-
-        for (Usize i = 0; i < state_count; ++i)
-        {
-            State *state = &state_list[i];
-            fprintf(f, "n%u [label=\"", state->state_id);
-            fprintf(f, "State %u\n", state->state_id);
-            fprint_state(f, state);
-            fprintf(f, "\"];\n");
-            for (Usize j = 0; j < state->expr_count; ++j)
+            // BNFExpression *expr = &state->exprs[j];
+            State *edge = state->edges[j];
+            if (edge == nullptr)
             {
-                // BNFExpression *expr = &state->exprs[j];
-                State *edge = state->edges[j];
-                if (edge == nullptr)
-                {
-                    continue;
-                }
-
-                for (I64 k = (I64)j - 1; k >= 0; --k)
-                {
-                    if (edge == state->edges[k])
-                    {
-                        goto continue_outer;
-                    }
-                }
-
-                fprintf(f, "n%u -> n%u", state->state_id, edge->state_id);
-                if (edge->creation_token.type == TokenType::NONTERMINAL)
-                {
-                    fprintf(f, " [label=\"%.*s\"];\n", 
-                        (int)edge->creation_token.data.length, edge->creation_token.data.data);
-                }
-                else if (edge->creation_token.type == TokenType::TERMINAL)
-                {
-                    fprintf(f, " [label=\"\'%.*s\'\"];\n", 
-                        (int)edge->creation_token.data.length, edge->creation_token.data.data);
-                }
-                else
-                {
-                    assert(false);
-                }
-
-                continue_outer:;
+                continue;
             }
+
+            for (I64 k = (I64)j - 1; k >= 0; --k)
+            {
+                if (edge == state->edges[k])
+                {
+                    goto continue_outer;
+                }
+            }
+
+            fprintf(f, "n%u -> n%u", state->state_id, edge->state_id);
+            if (edge->creation_token.type == TokenType::NONTERMINAL)
+            {
+                fprintf(f, " [label=\"%.*s\"];\n", 
+                    (int)edge->creation_token.data.length, edge->creation_token.data.data);
+            }
+            else if (edge->creation_token.type == TokenType::TERMINAL)
+            {
+                fprintf(f, " [label=\"\'%.*s\'\"];\n", 
+                    (int)edge->creation_token.data.length, edge->creation_token.data.data);
+            }
+            else
+            {
+                assert(false);
+            }
+
+            continue_outer:;
         }
-        fprintf(f, "}\n");
-
-
-
-        fclose(f);
     }
+    fprintf(f, "}\n");
 }
 
 
@@ -966,12 +888,13 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
             }
             else
             {
+                #if 0
                 printf("WARNING: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 fprint_BNF(stdout, meta_expr_table[index]);
                 printf("\n");
                 fprint_BNF(stdout, expr);
                 printf("\n");
-
+                #endif
                 Usize table_expr_precedence = 0;
                 Usize new_expr_precedence = 0;
                 {
@@ -1002,11 +925,15 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
 
                 if (table_expr_precedence < new_expr_precedence)
                 {
+                    #if 0
                     printf("Choosing table %s resolution\n", op_to_str(table[index].type));
+                    #endif
                 }
                 else
                 {
+                    #if 0
                     printf("Choosing %s resolution\n", op_to_str(op.type));
+                    #endif
                     table[index] = op;
                 }
             }
@@ -1427,7 +1354,6 @@ static Lexer g_lexer = {
 
 static State g_states[256];
 static U32 g_state_count = 0;
-#ifndef NOMAIN
 
 static const char *bnf_source =
     "<S> := <Number>\n"
@@ -1445,8 +1371,16 @@ static const char *bnf_source =
     "<Digit> := \'8\'\n"
     "<Digit> := \'9\'\n"
     ;
+
+#ifdef COMPILEMAIN 
 int main(void)
 {
+#else
+int DEBUG_LIB_MAIN_DO_NOT_USE(void)
+{ return 0;
+#endif
+    (void)graph_from_state_list;
+    (void)print_parse_table;
     parse_bnf_src(&g_lexer, bnf_source);
 
     create_all_substates(g_states, &g_state_count, &g_lexer);
@@ -1462,8 +1396,9 @@ int main(void)
             print_state(&g_states[i]);
         }
     }
-    graph_from_state_list(g_states, g_state_count);
-
+    FILE *f = fopen("input.dot", "w");
+    graph_from_state_list(f, g_states, g_state_count);
+    fclose(f);
     TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
     if (0)
     {
@@ -1473,4 +1408,46 @@ int main(void)
 
    return 0; 
 }
-#endif
+
+
+
+
+
+#include "ptg.hpp"
+
+Lexer *create_lexer_from_bnf(const char *src)
+{
+    Lexer *lex = alloc<Lexer>(1);
+    parse_bnf_src(lex, src);
+    return lex;
+}
+
+State *create_state_list(Lexer *lex, unsigned int *state_count)
+{
+    State *state_list = alloc<State>(512);
+    create_all_substates(state_list, state_count, lex);
+    return state_list;
+}
+
+TableOperation *create_parse_table_from_state_list(Lexer *lex, State *state_list, unsigned int state_count, int flags)
+{
+    (void)flags;
+    TableOperation *table = create_parse_table_from_states(lex, state_list, state_count);
+    return table;
+}
+
+bool parse(const char *src, TableOperation *table, Lexer *lex)
+{
+    return parse_str_with_parse_table(src, table, lex);
+}
+
+void print_table(TableOperation *table, Lexer *lex, unsigned int state_count)
+{
+    print_parse_table(table, lex->terminal_count + 1 + lex->non_terminal_count, state_count);
+}
+
+
+void write_states_as_graph(void *file_handle, State *state_list, unsigned int state_count)
+{
+    graph_from_state_list((FILE *)file_handle, state_list, state_count);
+}
