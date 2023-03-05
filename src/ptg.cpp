@@ -126,6 +126,7 @@ static bool is_whitespace(char c)
     switch (c)
     {
         case ' ': return true;
+        case '\r': return true;
         case '\n': return true;
         case '\t': return true;
     
@@ -156,26 +157,6 @@ static void move_past_whitespace(const char *src, Usize *cursor)
 }
 
 
-static void move_past_non_newline_whitespace(const char *src, Usize *cursor)
-{
-    while (src[*cursor] != '\n' && is_whitespace(src[*cursor]))
-    {
-        *cursor += 1;
-    }
-}
-
-
-
-
-static void move_to_endline(const char *src, Usize *cursor)
-{
-    while (src[*cursor] != '\n' && src[*cursor] != '\0')
-    {
-        *cursor += 1;
-    }
-}
-
-
 enum class TokenType
 {
     INVALID,
@@ -192,8 +173,6 @@ struct BNFToken
 
 static BNFToken parse_non_terminal_id(const char *src, Usize *cursor)
 {
-    // skip first <
-    // *cursor += 1;
     String id = {};
     id.data = src + *cursor;
     id.length = 0;
@@ -215,7 +194,6 @@ static BNFToken parse_non_terminal_id(const char *src, Usize *cursor)
 
 static BNFToken parse_terminal(const char *src, Usize *cursor)
 {
-    // skip first ' character
     String id = {};
     id.data = src + *cursor;
     id.length = 0;
@@ -308,7 +286,7 @@ static void add_terminal_if_not_already_in_lexer(Lexer *lex, String terminal)
 static Production parse_production(Lexer *lex, const char *src, Usize *cursor)
 {
     Production production = {};
-    while (src[*cursor] != '\n' && src[*cursor] != '\0')
+    while (src[*cursor] != ';' && src[*cursor] != '\0')
     {
         if (src[*cursor] == '\'')
         {
@@ -316,7 +294,7 @@ static Production parse_production(Lexer *lex, const char *src, Usize *cursor)
             BNFToken terminal = parse_terminal(src, cursor);
             add_to_production(&production, terminal);
             expect(src, cursor, "\'");
-            move_past_non_newline_whitespace(src, cursor);
+            move_past_whitespace(src, cursor);
             add_terminal_if_not_already_in_lexer(lex, terminal.data);
         }
         else if (src[*cursor] == '<')
@@ -325,7 +303,7 @@ static Production parse_production(Lexer *lex, const char *src, Usize *cursor)
             BNFToken non_terminal = parse_non_terminal_id(src, cursor);
             add_to_production(&production, non_terminal);
             expect(src, cursor, ">");
-            move_past_non_newline_whitespace(src, cursor);
+            move_past_whitespace(src, cursor);
             add_non_terminal_if_not_already_in_lexer(lex, non_terminal.data);
         }
         else
@@ -352,8 +330,10 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
     expect(src, cursor, ">");
     move_past_whitespace(src, cursor);
     expect(src, cursor, ":=");
-    move_past_non_newline_whitespace(src, cursor);
+    move_past_whitespace(src, cursor);
     expr.prod = parse_production(lex, src, cursor);
+    move_past_whitespace(src, cursor);
+    expect(src, cursor, ";");
     lex->exprs[lex->expr_count++] = expr;
 }
 
@@ -845,7 +825,7 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
             }
             else
             {
-                #if 1
+                #if 0
                 printf("WARNING: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 fprint_BNF(stdout, meta_expr_table[index]);
                 printf("\n");
@@ -882,13 +862,13 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
 
                 if (table_expr_precedence < new_expr_precedence)
                 {
-                    #if 1
+                    #if 0
                     printf("Choosing table %s resolution\n", op_to_str(table[index].type));
                     #endif
                 }
                 else
                 {
-                    #if 1
+                    #if 0
                     printf("Choosing %s resolution\n", op_to_str(op.type));
                     #endif
                     table[index] = op;
@@ -1053,110 +1033,6 @@ static String sub_string(String str, Usize start, Usize end)
     return s;    
 }
 
-#if 0
-static bool parse_str_with_parse_table(const char *str, TableOperation *table, Lexer *lex)
-{
-    Usize table_width = 1 + lex->terminal_count + lex->non_terminal_count;
-
-    Usize state_stack_size = 1024; 
-    Usize *state_stack = alloc<Usize>(state_stack_size);
-    memset(state_stack, -1, sizeof(*state_stack) * state_stack_size);
-    Usize state_count = state_stack_size;
-
-    Usize symbol_stack_size = 1024; 
-    I64 *symbol_stack = alloc<I64>(symbol_stack_size);
-    Usize symbol_count = symbol_stack_size;
-
-    // assuming state id 0 is the first state
-    state_stack[--state_count] = 0;
-
-
-    String str_to_parse = make_string(str);
-
-    bool active = true;
-    bool succeded_parsing = true;
-    for (Usize index = 0; active;)
-    {
-        I64 lookahead_lr_index = get_ir_item_index(lex, sub_string(str_to_parse, index, index));
-        if (lookahead_lr_index == -1)
-        {
-            // provided token not found in grammar
-            return false;
-        }
-
-
-        TableOperation op = table[(Usize)lookahead_lr_index + state_stack[state_count] * table_width];
-        switch (op.type)
-        {
-            case TableOperationType::INVALID:
-            {
-                // printf("%s, %u\n", op_to_str(op.type), op.arg);
-                // printf("lookahead_ir_index: %lld, state: %zu\n", lookahead_lr_index, state_stack[state_count]);
-                active = false;
-                succeded_parsing = false;
-            } break;
-            case TableOperationType::SHIFT:
-            {
-                // printf("%s, %u\n", op_to_str(op.type), op.arg);
-                symbol_stack[--symbol_count] = lookahead_lr_index;
-                state_stack[--state_count] = op.arg;
-                index += 1;
-            } break;
-            case TableOperationType::REDUCE:
-            {
-                // printf("%s, %u\n", op_to_str(op.type), op.arg);
-                assert(op.arg >= 0 && op.arg < lex->expr_count);
-
-                BNFExpression *current_expr = &lex->exprs[op.arg];
-                Production *current_prod = &current_expr->prod; 
-                for (I64 i = (I64)current_prod->count - 1; i >= 0; --i)
-                {
-                    I64 lr_item = symbol_stack[symbol_count++];
-                    I64 prod_lr = get_ir_item_index(lex, current_prod->expressions[i].data);
-
-                    state_count += 1;
-
-                    // TODO(Johan): change to error handling/fail parse
-                    assert(lr_item == prod_lr); 
-                }
-                I64 right_hand_side_nonterminal = get_ir_item_index(lex, current_expr->non_terminal.data);
-                assert(right_hand_side_nonterminal >= 0);
-                symbol_stack[--symbol_count] = right_hand_side_nonterminal;
-
-                Usize top_of_state_stack = state_stack[state_count];
-
-                state_stack[--state_count] = table[(Usize)right_hand_side_nonterminal + top_of_state_stack * table_width].arg;
-
-            } break;
-            case TableOperationType::GOTO:
-            {
-                // should never actually happen, as gotos are handled when reducing
-                assert(false);
-            } break;
-            case TableOperationType::ACCEPT:
-            {
-                // printf("ACCEPT\n");
-                active = false;
-                succeded_parsing = true;
-            } break;
-
-            default:
-            {
-                active = false;
-                succeded_parsing = false;
-                assert(false && "unreachable");
-            }
-        }
-    }
-
-
-
-
-    free(state_stack);
-    free(symbol_stack);
-    return succeded_parsing;
-}
-#endif
 struct Expr
 {
     I64 lr_item;
@@ -1429,7 +1305,6 @@ static void parse_bnf_src(Lexer *lex, const char *src)
         if (src[cursor] == '\0') break;
 
         parse_BNFexpr_and_add_to_lexer(lex, src, &cursor);
-        move_to_endline(src, &cursor);
     }
 
     Usize set_size = lex->terminal_count + 1 + lex->non_terminal_count;
@@ -1466,15 +1341,15 @@ static void create_all_substates(State *state_list, U32 *state_count, Lexer *lex
 
 static String string_from_lr_index(Lexer *lex, I64 lr)
 {
-    if (lr < lex->terminal_count)
+    if (lr < (I64)lex->terminal_count)
     {
         return lex->terminals[lr];
     }
-    if (lr == lex->terminal_count) return make_string("$");
+    if (lr == (I64)lex->terminal_count) return make_string("$");
 
-    if (lr < lex->terminal_count + 1 + lex->non_terminal_count)
+    if (lr < (I64)(lex->terminal_count + 1 + lex->non_terminal_count))
     {
-        return lex->non_terminals[lr - (lex->terminal_count + 1)];
+        return lex->non_terminals[lr - (I64)(lex->terminal_count + 1)];
     }
     return make_string("");
 }
@@ -1500,7 +1375,7 @@ static void graph_from_syntax_tree(const char *file_path, Expr *tree_list, Lexer
         Expr *active_expr = expr_stack[stack_count++];
         String ir_str = string_from_lr_index(lex, active_expr->lr_item);
         fprintf(f, "n%llu [label=\"%.*s\"];\n", (Usize)active_expr, (int)ir_str.length, ir_str.data);
-        for (I64 i = active_expr->expr_count - 1; i >= 0; --i)
+        for (I64 i = (I64)active_expr->expr_count - 1; i >= 0; --i)
         {
             fprintf(f, "n%llu -- n%llu\n", (Usize)active_expr, (Usize)active_expr->exprs[i]);
             expr_stack[--stack_count] = active_expr->exprs[i];
@@ -1512,9 +1387,17 @@ static void graph_from_syntax_tree(const char *file_path, Expr *tree_list, Lexer
     fclose(f);
 }
 
-#define COMPILEMAIN
+#ifndef PTG_LIB
 
-#ifdef COMPILEMAIN
+static void usage(const char *program)
+{
+    fprintf(stderr, "USAGE: %s\n", program);
+    fprintf(stderr, "-i <input path>; Reads bnf from file, by default reads from stdin.\n");
+    fprintf(stderr, "-m <bytes>; allocates bytes for table generation");
+    fprintf(stderr, "-target <bytes>; output target for parsing table:\n    Targets: binary, text, c, rust\n");
+    fprintf(stderr, "-o <output path>; outputs to file\n");
+}
+
 static Lexer g_lexer = {
     .exprs = {},
     .expr_count = 0,
@@ -1527,13 +1410,60 @@ static Lexer g_lexer = {
 static State g_states[256];
 static U32 g_state_count = 0;
 
-
-static void program()
+static char *file_to_str(const char *file_path)
 {
-    fprintf(stderr, "USAGE: %s\n", program);
-    fprintf(stderr, "-i <input file>; Reads bnf from file, by default reads from stdin.\n");
-    fprintf(stderr, "-m <bytes>; allocates bytes for table generation")
+    char *str = nullptr;
+    FILE *f = fopen(file_path, "rb");
+    if (f == nullptr)
+    {
+        fprintf(stderr, "ERROR: %s\n", strerror(errno));
+        return nullptr;
+    }
+
+    long file_size = -1;
+    if (fseek(f, 0, SEEK_END) != 0)
+    {
+        fprintf(stderr, "ERROR: failed to seek file %s\n", file_path);
+        goto end_close;
+    }
+    file_size = ftell(f);
+    if (file_size < 0)
+    {
+        goto end_close;
+    }
+    if (fseek(f, 0, SEEK_SET) != 0)
+    {
+        fprintf(stderr, "ERROR: failed to seek file %s\n", file_path);
+        goto end_close;
+    }
+    {
+        Usize buf_size = (Usize)file_size + 1; 
+        str = alloc<char>(buf_size);
+        memset(str, 0, sizeof(*str) * buf_size);
+    }
+    if (fread(str, sizeof(*str), (Usize)file_size, f) != (Usize)file_size)
+    {
+        fprintf(stderr, "ERROR: failed to read data from file %s\n", file_path);
+        free(str);
+        str = nullptr;
+    }
+
+    end_close:
+    if (fclose(f) == EOF)
+    {
+        fprintf(stderr, "ERROR: failed to close file %s\n", file_path);
+    }
+    return str;
 }
+
+enum class OutputTarget
+{
+    INVALID,
+    BINARY,
+    TEXT,
+    C,
+    RUST,
+};
 
 int main(int argc, const char **argv)
 {
@@ -1543,21 +1473,107 @@ int main(int argc, const char **argv)
         usage(program);
         return -1;
     }
+    const char *source_path = nullptr;
+    const char *output_path = nullptr;
+    OutputTarget output_target = OutputTarget::TEXT;
+    {
+        if (is_str(make_string(*argv), make_string("-i")))
+        {
+            argv += 1;
+            source_path = *argv++;
+        }
+        else if (is_str(make_string(*argv), make_string("-m")))
+        {
+            assert(false && "not implemented");
+        }
+        else if (is_str(make_string(*argv), make_string("-target")))
+        {
+            argv += 1;
+            if (is_str(make_string(*argv), make_string("binary")))
+            {
+                argv += 1;
+                output_target = OutputTarget::BINARY;
+            }
+            else if (is_str(make_string(*argv), make_string("text")))
+            {
+                argv += 1;
+                output_target = OutputTarget::TEXT;
+            }
+            else if (is_str(make_string(*argv), make_string("c")))
+            {
+                argv += 1;
+                output_target = OutputTarget::C;
+            }
+            else if (is_str(make_string(*argv), make_string("rust")))
+            {
+                argv += 1;
+                output_target = OutputTarget::RUST;
+            }
+            else
+            {
+                usage(program);
+                return -1;
+            }
+        }
+        else if (is_str(make_string(*argv), make_string("-o")))
+        {
+            argv += 1;
+            output_path = *argv++;
+        }
+        else
+        {
+            usage(program);
+            return -1;
+        }
+    }
 
-    parse_bnf_src(&g_lexer, bnf_source);
-
+    char *bnf_src = nullptr;
+    if (source_path != nullptr)
+    {
+        bnf_src = file_to_str(source_path);
+    }
+    if (bnf_src == nullptr)
+    {
+        return -1;
+    }
+    parse_bnf_src(&g_lexer, bnf_src);
     create_all_substates(g_states, &g_state_count, &g_lexer);
-
-    const char *input_str = "s(x)=c(x)*540+5+23123-h(t)/v(n)+l$";
     TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
-    Expr *tree;
-    assert(parse_str_with_parse_table(input_str, table, &g_lexer, &tree));
-    assert(tree != nullptr);
 
-    graph_from_syntax_tree("input.dot", tree, &g_lexer);
+    Usize table_size = (g_lexer.terminal_count + 1 + g_lexer.non_terminal_count) * g_state_count;
+
+    if (output_path != nullptr)
+    {
+        FILE *f = fopen(output_path, "wb");
+        if (f == nullptr)
+        {
+            fprintf(stderr, "ERROR: failed to open file %s\n", output_path);
+            return -1;
+        }
 
 
-   return 0; 
+        if (fwrite(table, sizeof(*table) * table_size, 1, f) != 1)
+        {
+            fprintf(stderr, "ERROR: failed to write to file %s\n", output_path);
+        }
+
+
+        if (fclose(f) == EOF)
+        {
+            fprintf(stderr, "ERROR: failed close file %s\n", output_path);
+            return -1;
+        }
+    }
+    else
+    {
+        if (fwrite(table, sizeof(*table) * table_size, 1, stdout) != 1)
+        {
+            fprintf(stderr, "ERROR: failed to write to file %s\n", "stdout");
+        }
+    }
+
+
+    return 0; 
 }
 #endif
 
