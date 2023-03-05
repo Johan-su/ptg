@@ -9,7 +9,7 @@ static const char *bnf_source =
     "<S'> := <E>\n"
     "<S'> := \n"
     //
-    "<FuncDecl> := <Id>\'(\'<Id>\')\' \'=\' <E>\n"
+    "<FuncDecl> := <Id>\'(\'<E>\')\' \'=\' <E>\n"
     "<VarDecl> := <Id> \'=\' <E>\n"
     "<Id> := \'a\'\n"
     "<Id> := \'b\'\n"
@@ -37,6 +37,9 @@ static const char *bnf_source =
     "<Id> := \'x\'\n"
     "<Id> := \'y\'\n"
     "<Id> := \'z\'\n"
+    // "<Id> := <Id><Id'>\n"
+    // "<Id'> := <Id>\n"
+    // "<Id'> := \n"
     //
     "<E> := \'(\'<E>\')\'\n"
     "<E> := <Number>\n"

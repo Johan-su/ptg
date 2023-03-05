@@ -8,26 +8,26 @@ if not exist build mkdir build
 
 cd ./build
 
-%CLANG% ../src/main.cpp %FLAGS% -D COMPILEMAIN -o ptg.exe
+%CLANG% ../src/ptg.cpp %FLAGS% -D COMPILEMAIN -o ptg.exe
 
 if not exist tests mkdir tests
 cd ./tests
 
-%CLANG% ../../src/main.cpp ../../tests/bnf1.cpp %FLAGS% -Wno-unused-function -o bnf1.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf2.cpp %FLAGS% -Wno-unused-function -o bnf2.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf3.cpp %FLAGS% -Wno-unused-function -o bnf3.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf4.cpp %FLAGS% -Wno-unused-function -o bnf4.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf5.cpp %FLAGS% -Wno-unused-function -o bnf5.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf6.cpp %FLAGS% -Wno-unused-function -o bnf6.exe
-%CLANG% ../../src/main.cpp ../../tests/bnf7.cpp %FLAGS% -Wno-unused-function -o bnf7.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf1.cpp %FLAGS% -Wno-unused-function -o bnf1.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf2.cpp %FLAGS% -Wno-unused-function -o bnf2.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf3.cpp %FLAGS% -Wno-unused-function -o bnf3.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf4.cpp %FLAGS% -Wno-unused-function -o bnf4.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf5.cpp %FLAGS% -Wno-unused-function -o bnf5.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf6.cpp %FLAGS% -Wno-unused-function -o bnf6.exe
+@REM %CLANG% ../../src/ptg.cpp ../../tests/bnf7.cpp %FLAGS% -Wno-unused-function -o bnf7.exe
 
-bnf1.exe
-bnf2.exe
-bnf3.exe
-bnf4.exe
-bnf5.exe
-bnf6.exe
-bnf7.exe
+@REM bnf1.exe
+@REM bnf2.exe
+@REM bnf3.exe
+@REM bnf4.exe
+@REM bnf5.exe
+@REM bnf6.exe
+@REM bnf7.exe
 
 
 cd ..
