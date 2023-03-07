@@ -1598,7 +1598,9 @@ int main(int argc, const char **argv)
         } break;
         case OutputTarget::BINARY:
         {
-            write_output_data_to_target(table, sizeof(*table) * table_size, output_path);
+            Usize table_size_binary = sizeof(*table) * table_size;
+            write_output_data_to_target(&table_size_binary, sizeof(table_size_binary), output_path)
+            write_output_data_to_target(table, table_size_binary, output_path);
         } break;
         case OutputTarget::TEXT:
         {
