@@ -1008,7 +1008,7 @@ static void print_parse_table(TableOperation *parse_table, Usize table_width, Us
         {
             TableOperation *op = row + x;
 
-            printf("[%-7s, %u]", op_to_str(op->type), op->arg);
+            printf("[%-7s, %u] ", op_to_str(op->type), op->arg);
         }
         printf("\n");
     }
@@ -1392,9 +1392,9 @@ static void graph_from_syntax_tree(const char *file_path, Expr *tree_list, Lexer
 static void usage(const char *program)
 {
     fprintf(stderr, "USAGE: %s\n", program);
-    fprintf(stderr, "-i <input path>; Reads bnf from file, by default reads from stdin.\n");
+    fprintf(stderr, "-i <input path>; Reads bnf from file, by READING FROM STDIN DOES NOT WORK(default reads from stdin).\n");
     fprintf(stderr, "-m <bytes>; allocates bytes for table generation");
-    fprintf(stderr, "-target <bytes>; output target for parsing table:\n    Targets: binary, text, c, rust\n");
+    fprintf(stderr, "-target <target>; output target for parsing table:\n    Targets: binary, text, c, rust\n");
     fprintf(stderr, "-o <output path>; outputs to file\n");
 }
 
@@ -1465,6 +1465,47 @@ enum class OutputTarget
     RUST,
 };
 
+// if output_path is null, the function will write to stdout
+static int write_output_data_to_target(const void *data, Usize data_size, const char *output_path)
+{
+    FILE *f = nullptr;
+    bool should_close_fd = false;
+    const char *file_name = nullptr;
+    if (output_path != nullptr)
+    {
+        f = fopen(output_path, "wb");
+        if (f == nullptr)
+        {
+            fprintf(stderr, "ERROR: failed to open file %s\n", output_path);
+            return -1;
+        }
+        should_close_fd = true;
+        file_name = output_path;
+    }
+    else
+    {
+        f = stdout;
+        should_close_fd = false;
+        file_name = "stdout";
+    }
+
+    if (fwrite(data, data_size, 1, f) != 1)
+    {
+        fprintf(stderr, "ERROR: failed to write to file %s\n", file_name);
+    }
+
+    if (should_close_fd)
+    {
+        if (fclose(f) == EOF)
+        {
+            fprintf(stderr, "ERROR: failed close file %s\n", file_name);
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
 int main(int argc, const char **argv)
 {
     const char *program = *argv++;
@@ -1476,6 +1517,8 @@ int main(int argc, const char **argv)
     const char *source_path = nullptr;
     const char *output_path = nullptr;
     OutputTarget output_target = OutputTarget::TEXT;
+    // parse commandline
+    while (*argv != nullptr)
     {
         if (is_str(make_string(*argv), make_string("-i")))
         {
@@ -1527,6 +1570,7 @@ int main(int argc, const char **argv)
         }
     }
 
+    // TODO(Johan) add support for reading bnf_src form stdin
     char *bnf_src = nullptr;
     if (source_path != nullptr)
     {
@@ -1536,41 +1580,70 @@ int main(int argc, const char **argv)
     {
         return -1;
     }
+
     parse_bnf_src(&g_lexer, bnf_src);
     create_all_substates(g_states, &g_state_count, &g_lexer);
     TableOperation *table = create_parse_table_from_states(&g_lexer, g_states, g_state_count);
 
     Usize table_size = (g_lexer.terminal_count + 1 + g_lexer.non_terminal_count) * g_state_count;
 
-    if (output_path != nullptr)
+
+
+    switch(output_target)
     {
-        FILE *f = fopen(output_path, "wb");
-        if (f == nullptr)
+        case OutputTarget::INVALID:
         {
-            fprintf(stderr, "ERROR: failed to open file %s\n", output_path);
-            return -1;
-        }
-
-
-        if (fwrite(table, sizeof(*table) * table_size, 1, f) != 1)
+            assert(false && "Unreachable");
+            exit(-2);
+        } break;
+        case OutputTarget::BINARY:
         {
-            fprintf(stderr, "ERROR: failed to write to file %s\n", output_path);
-        }
-
-
-        if (fclose(f) == EOF)
+            write_output_data_to_target(table, sizeof(*table) * table_size, output_path);
+        } break;
+        case OutputTarget::TEXT:
         {
-            fprintf(stderr, "ERROR: failed close file %s\n", output_path);
-            return -1;
-        }
+            const char *format = "[%-7s, %u] ";
+            Usize block_size = (Usize)snprintf(nullptr, 0, format, op_to_str(table[0].type), table[0].arg);
+            char *data_str = alloc<char>(block_size * table_size);
+            char *temp_block = alloc<char>(block_size + 1); // + 1 for null
+
+            for (Usize i = 0; i < table_size; ++i)
+            {
+                snprintf(temp_block, block_size, format, op_to_str(table[i].type), table[i].arg);
+                // do not copy null into data_str
+                memcpy(data_str + (i * block_size), temp_block, sizeof(*temp_block) * block_size);
+            }
+
+            write_output_data_to_target(data_str, sizeof(*data_str) * block_size *table_size, output_path);
+
+            free(temp_block);
+            free(data_str);
+        } break;
+        case OutputTarget::C:
+        {
+            assert(false && "not implemented");
+            const char *pre = "int table[] = {"; 
+            Usize pre_len = str_len(pre);
+            const char *post = "};";
+            char *data_str = alloc<char>(pre_len + str_len(post));
+            memcpy(data_str, pre, sizeof(*pre) * pre_len);
+            char temp_buf[32];
+
+            // for (Usize i = 0; i < )
+
+            free(data_str);
+        } break;
+        case OutputTarget::RUST:
+        {
+            assert(false && "not implemented");
+        } break;
+
     }
-    else
-    {
-        if (fwrite(table, sizeof(*table) * table_size, 1, stdout) != 1)
-        {
-            fprintf(stderr, "ERROR: failed to write to file %s\n", "stdout");
-        }
-    }
+
+
+
+
+    
 
 
     return 0; 
