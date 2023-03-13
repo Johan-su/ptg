@@ -22,8 +22,8 @@ do                                                                              
 {                                                                                                 \
     if (!(condition))                                                                             \
     {                                                                                             \
-        __debugbreak();                                                                           \
         fprintf(stderr, "ERROR: assertion failed [%s] at %s:%d\n", #condition, __FILE__, __LINE__); \
+        __debugbreak();                                                                           \
     }                                                                                             \
 } while (0)
 #else
@@ -40,8 +40,6 @@ static T *alloc(Usize amount)
 {
     return (T *)malloc(sizeof(T) * amount);
 }
-
-
 
 
 
@@ -135,14 +133,24 @@ static bool is_whitespace(char c)
 }
 
 
+#define exit_with_error(format, ...) \
+do \
+{ \
+    fprintf(stderr, format, __VA_ARGS__); \
+    exit(1); \
+} while (0)
+
+
 static void expect(const char *src, Usize *cursor, const char *cmp)
 {
     Usize start_cursor = *cursor; 
     Usize compare_val = *cursor - start_cursor;
     while (cmp[compare_val] != '\0')
     {
-        assert(src[*cursor] != '\0');
-        assert(src[*cursor] == cmp[compare_val]);
+        if (src[*cursor] != cmp[compare_val] || src[*cursor] == '\0')
+        {
+            exit_with_error("ERROR: expected %s but got %s", &cmp[compare_val], &src[*cursor]);
+        }
         *cursor += 1;
         compare_val = *cursor - start_cursor;
     }
@@ -270,18 +278,6 @@ static void add_non_terminal_if_not_already_in_lexer(Lexer *lex, String non_term
     lex->non_terminals[lex->non_terminal_count++] = non_terminal;
 }
 
-static void add_terminal_if_not_already_in_lexer(Lexer *lex, String terminal)
-{
-    for (Usize i = 0; i < lex->terminal_count; ++i)
-    {
-        if (is_str(lex->terminals[i], terminal))
-        {
-            return;
-        }
-    }
-    lex->terminals[lex->terminal_count++] = terminal;
-}
-
 
 static Production parse_production(Lexer *lex, const char *src, Usize *cursor)
 {
@@ -295,7 +291,6 @@ static Production parse_production(Lexer *lex, const char *src, Usize *cursor)
             add_to_production(&production, terminal);
             expect(src, cursor, "\'");
             move_past_whitespace(src, cursor);
-            add_terminal_if_not_already_in_lexer(lex, terminal.data);
         }
         else if (src[*cursor] == '<')
         {
@@ -333,7 +328,6 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
     move_past_whitespace(src, cursor);
     expr.prod = parse_production(lex, src, cursor);
     move_past_whitespace(src, cursor);
-    expect(src, cursor, ";");
     lex->exprs[lex->expr_count++] = expr;
 }
 
@@ -1296,15 +1290,65 @@ static void set_first(Lexer *lex)
 
 
 
+
+static void parse_token(const char *src, Usize *cursor, Lexer *lex)
+{
+    String token_str = {};
+    token_str.data = &src[*cursor];
+    Usize count = 0;
+    while (src[*cursor] != '\"')
+    {
+        if (src[*cursor] == '\0')
+        {
+            exit_with_error("ERROR: failed to parse token\n");
+        }
+
+
+        count += 1;
+        *cursor += 1;
+    }
+    token_str.length = count;
+
+    lex->terminals[lex->terminal_count++] = token_str;
+}
+
+
 static void parse_bnf_src(Lexer *lex, const char *src)
 {
-    for (Usize cursor = 0; src[cursor] != '\0' ;)
+    Usize cursor = 0;
+    // parse tokens
     {
-        assert(lex->expr_count < ARRAY_COUNT(lex->exprs));
         move_past_whitespace(src, &cursor);
-        if (src[cursor] == '\0') break;
+        expect(src, &cursor, "TOKENS");
+        move_past_whitespace(src, &cursor);
+        while (src[cursor] != ':')
+        {
+            move_past_whitespace(src, &cursor);
+            expect(src, &cursor, "\"");
+            parse_token(src, &cursor, lex);
+            expect(src, &cursor, "\"");
+            move_past_whitespace(src, &cursor);
+            expect(src, &cursor, ";");
+            move_past_whitespace(src, &cursor);
+        }
+        expect(src, &cursor, ":");
 
-        parse_BNFexpr_and_add_to_lexer(lex, src, &cursor);
+    }
+    // parse bnf
+    {
+        move_past_whitespace(src, &cursor);
+        expect(src, &cursor, "BNF");
+        move_past_whitespace(src, &cursor);
+        while (src[cursor] != ':')
+        {
+            assert(lex->expr_count < ARRAY_COUNT(lex->exprs));
+            move_past_whitespace(src, &cursor);
+
+            parse_BNFexpr_and_add_to_lexer(lex, src, &cursor);
+            expect(src, &cursor, ";");
+            move_past_whitespace(src, &cursor);
+        }
+        expect(src, &cursor, ":");
     }
 
     Usize set_size = lex->terminal_count + 1 + lex->non_terminal_count;
@@ -1599,7 +1643,7 @@ int main(int argc, const char **argv)
         case OutputTarget::BINARY:
         {
             Usize table_size_binary = sizeof(*table) * table_size;
-            write_output_data_to_target(&table_size_binary, sizeof(table_size_binary), output_path)
+            write_output_data_to_target(&table_size_binary, sizeof(table_size_binary), output_path);
             write_output_data_to_target(table, table_size_binary, output_path);
         } break;
         case OutputTarget::TEXT:
