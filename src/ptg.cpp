@@ -1667,16 +1667,29 @@ int main(int argc, const char **argv)
         } break;
         case OutputTarget::C:
         {
-            assert(false && "not implemented");
             const char *pre = "int table[] = {"; 
             Usize pre_len = str_len(pre);
-            const char *post = "};";
-            char *data_str = alloc<char>(pre_len + str_len(post));
-            memcpy(data_str, pre, sizeof(*pre) * pre_len);
+            const char *post = "};\n";
+            const char *parse_function = "";
+            Usize data_str_size = pre_len + 24 * table_size + str_len(post);
+            char *data_str = alloc<char>(data_str_size);
+            memset(data_str, 0, sizeof(*data_str) * data_str_size);
+            strcat(data_str, pre);
             char temp_buf[32];
 
-            // for (Usize i = 0; i < )
+            for (Usize i = 0; i < table_size - 1; ++i)
+            {
+                snprintf(temp_buf, sizeof(temp_buf), "%u,%u,", table[i].type, table[i].arg);
+                strcat(data_str, temp_buf);
+            }
+            snprintf(temp_buf, sizeof(temp_buf), "%u,%u", table[table_size - 1].type, table[table_size - 1].arg);
+            strcat(data_str, temp_buf);
+            strcat(data_str, post);
 
+
+            Usize str_length = str_len(data_str);
+
+            write_output_data_to_target(data_str, sizeof(*data_str) * str_length, output_path);
             free(data_str);
         } break;
         case OutputTarget::RUST:
