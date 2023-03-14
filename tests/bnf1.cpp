@@ -1,16 +1,46 @@
 #include "../src/ptg.hpp"
 #include <assert.h>
 
-// state_count * (lex->non_terminal_count + lex->terminal_count + 1)
+
+enum Token
+{
+    TOKEN_a,
+    TOKEN_t,
+    TOKEN_End,
+};
+
+const char *bnf_source = 
+    "TOKENS"
+    "\"a\";"
+    "\"t\";"
+    "\"End\";"
+    ":"
+    "BNF"
+    "<S> := <E>;"
+    "<E> := 'a';"
+    "<E> := <E>'t';"
+    ":";
 
 
 
+static long long token_list[128] = {};
+static unsigned int token_count = 0;
 
-static const char *bnf_source =
-    "<S> := <E>\n"
-    "<E> := \'a\'\n"
-    "<E> := <E>\'t\'\n"
-    ;
+static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
+{
+    token_count = 0;
+    int index = 0;
+    for (;str[index] != '\0'; ++index)
+    {
+        if (str[index] == 'a') token_list[token_count++] = TOKEN_a;
+        else if (str[index] == 't') token_list[token_count++] = TOKEN_t;
+        else assert(false);
+    }
+    token_list[token_count++] = TOKEN_End;
+
+   return parse(token_list, token_count, table, lex);
+}
+
 
 int main(void)
 {
@@ -22,13 +52,13 @@ int main(void)
 
 
 
-    assert(!parse("$", table, lexer));
-    assert(parse("a$", table, lexer));
-    assert(!parse("t$", table, lexer));
-    assert(parse("at$", table, lexer));
-    assert(parse("att$", table, lexer));
-    assert(parse("atttttttttttttttttttttttttttt$", table, lexer));
-    assert(!parse("aaaaat$", table, lexer));
-    assert(!parse("ata$", table, lexer));
-    assert(!parse("ataatatatatatatatatattttatatataat$", table, lexer));
+    assert(!parse_str("", table, lexer));
+    assert(parse_str("a", table, lexer));
+    assert(!parse_str("t", table, lexer));
+    assert(parse_str("at", table, lexer));
+    assert(parse_str("att", table, lexer));
+    assert(parse_str("atttttttttttttttttttttttttttt", table, lexer));
+    assert(!parse_str("aaaaat", table, lexer));
+    assert(!parse_str("ata", table, lexer));
+    assert(!parse_str("ataatatatatatatatatattttatatataat", table, lexer));
 }
