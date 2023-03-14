@@ -81,42 +81,10 @@ static bool is_str(String s0, String s1)
 }
 
 
-// <S> := <E>, $
-// <E> := (<E>)
-// <E> := 
-// <E> := 0
-
-
-
-// static const char *bnf_source = 
-//     "<E> := \'(\'<E>\')\'\n" 
-//     "<E> := \'0\'";
-
-
-
-
-
-
-
-
-
-
 
 
 // https://cs.stackexchange.com/questions/152523/how-is-the-lookahead-for-an-lr1-automaton-computed
 // https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
-
-
-//"<Number> := [0-9]+ || [0.9]+.[0-9]*"
-
-
-
-
-
-
-
-
-
 
 
 static bool is_whitespace(char c)
@@ -776,20 +744,54 @@ struct TableOperation
 };
 
 
-struct ParseTable
+struct ParseExpr
 {
-    Usize LR_items_count;
-    Usize data_size;
-    TableOperation data[];
+    I64 non_terminal;
+    U32 production_count;
+    I64 prods[];
 };
 
-static void print_parse_table(ParseTable *parse_table)
+
+struct ParseTable
 {
-    Usize table_height = parse_table->data_size / parse_table->LR_items_count;
-    Usize table_width = parse_table->LR_items_count;
+    U32 data_size;
+    U32 state_count;
+    U32 LR_items_count;
+
+
+
+    U32 expr_count;
+    U32 expr_header_size;
+
+    
+    U8 data[];
+};
+
+
+
+static void print_parse_table(ParseTable *table)
+{
+    U8 *data = table->data;
+    for (Usize i = 0; i < table->expr_count; ++i)
+    {
+        ParseExpr *expr_header = (ParseExpr *)data;
+        (ParseExpr *)data += 1;
+        printf("<%lld> ->", expr_header->non_terminal);
+        for (Usize j = 0; j < expr_header->production_count)
+        {
+            I64 *prod = (I64 *)data;
+            (I64 *)data += 1;
+            printf(" %lld", *prod);
+        }
+        printf("\n");
+
+    }
+
+    Usize table_height = table->state_count;
+    Usize table_width = table->LR_items_count;
     for (Usize y = 0; y < table_height; ++y)
     {
-        TableOperation *row = &parse_table->data[y * table_width];
+        TableOperation *row = (TableOperation *)data;
         for (Usize x = 0; x < table_width; ++x)
         {
             TableOperation *op = row + x;
@@ -899,7 +901,24 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
 
 static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, Usize state_count)
 {
-    
+
+    // get byte size of all expressions
+    Usize byte_count = 0;
+    for (I64 i = 0; i < (I64)lex->expr_count; ++i)
+    {
+        BNFExpression *expr = &lex->exprs[i];
+        I64 non_terminal = get_ir_item_index(lex, expr->non_terminal.data);
+        byte_count += sizeof(non_terminal);
+        for (I64 j = 0; j < expr->prod.count; ++j)
+        {
+            I64 prod = get_ir_item_index(lex, expr->prod.expressions[j].data);
+            byte_count += sizeof(prod);
+        }
+
+    }
+
+    // TODO(Johan) add exprs to parsetable
+
     Usize table_size = state_count * lex->LR_items_count;
     ParseTable *parse_table = (ParseTable *)malloc(sizeof(*parse_table) + sizeof(parse_table->data[0]) * table_size);
     memset(parse_table, 0, sizeof(*parse_table) + sizeof(parse_table->data[0]) * table_size);
@@ -1020,9 +1039,9 @@ struct Expr
 
 
 
-static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, Lexer *lex, Expr **syntax_tree_out)
+static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, Expr **syntax_tree_out)
 {
-    Usize table_width = lex->LR_items_count;
+    Usize table_width = table->LR_items_count;
 
     Usize state_stack_size = 1024; 
     Usize *state_stack = alloc<Usize>(state_stack_size);
@@ -1470,7 +1489,6 @@ enum class OutputTarget
     TEXT,
     C,
     RUST,
-    GRAPH,
 };
 
 // if output_path is null, the function will write to stdout

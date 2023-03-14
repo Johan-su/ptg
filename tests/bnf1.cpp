@@ -51,6 +51,7 @@ int main(void)
     State *state_list = create_state_list(lexer, &state_count);
     ParseTable *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
 
+    print_table(table);
 
 
 
