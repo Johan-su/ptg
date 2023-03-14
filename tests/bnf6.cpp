@@ -23,7 +23,7 @@ static const char *bnf_source =
     "<T> := 'I';"
     ":";
 
-static long long token_list[128] = {};
+static ParseToken token_list[128] = {};
 static unsigned int token_count = 0;
 
 static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
@@ -32,11 +32,11 @@ static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == '+') token_list[token_count++] = TOKEN_plus;
-        else if (str[index] == 'I') token_list[token_count++] = TOKEN_I;
+        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index]};
+        else if (str[index] == 'I') token_list[token_count++] = {TOKEN_I, &str[index]};
         else return false;
     }
-    token_list[token_count++] = TOKEN_End;
+    token_list[token_count++] = {TOKEN_End, nullptr};
 
    return parse(token_list, token_count, table, lex);
 }

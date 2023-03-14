@@ -1,7 +1,29 @@
 #ifndef PTG_HEADER_HPP
 #define PTG_HEADER_HPP
+#include <stdint.h>
+
+typedef uint8_t U8;
+typedef uint16_t U16;
+typedef uint32_t U32;
+typedef uint64_t U64;
+
+typedef size_t Usize;
+
+typedef int8_t I8;
+typedef int16_t I16;
+typedef int32_t I32;
+typedef int64_t I64;
+
+
+
+
 
 struct ParseTable;
+struct ParseToken
+{
+    I64 token_type;
+    const char *data;
+};
 struct Lexer;
 struct State;
 
@@ -12,16 +34,16 @@ struct State;
 
 
 extern Lexer *create_lexer_from_bnf(const char *src);
-extern State *create_state_list(Lexer *lex, unsigned int *state_count);
+extern State *create_state_list(Lexer *lex, U32 *state_count);
 
 #define DISPLAY_INFO (1 << 0)
 #define DISPLAY_WARNINGS (1 << 1)
 #define DISPLAY_ERRORS (1 << 2)
 
-extern ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, unsigned int state_count, int flags);
-extern bool parse(long long *token_list, unsigned int token_count, ParseTable *table, Lexer *lex);
+extern ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, U32 state_count, int flags);
+extern bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, Lexer *lex);
 extern void print_table(ParseTable *table);
-extern void write_states_as_graph(void *file_handle, State *state_list, unsigned int state_count);
+extern void write_states_as_graph(void *file_handle, State *state_list, U32 state_count);
 
 // extern unsigned int get_size_of_table_as_str(TableOperation *table);
 // extern bool write_table_as_str(char *buf, unsigned int buf_size, TableOperation *table); 

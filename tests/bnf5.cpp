@@ -22,7 +22,7 @@ static const char *bnf_source =
 
 
 
-static long long token_list[128] = {};
+static ParseToken token_list[128] = {};
 static unsigned int token_count = 0;
 
 static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
@@ -31,10 +31,10 @@ static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == 'a') token_list[token_count++] = TOKEN_a;
+        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index]};
         else return false;
     }
-    token_list[token_count++] = TOKEN_End;
+    token_list[token_count++] = {TOKEN_End, nullptr};
 
    return parse(token_list, token_count, table, lex);
 }

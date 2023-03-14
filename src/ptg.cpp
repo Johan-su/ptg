@@ -831,7 +831,7 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
             }
             else
             {
-                #if 1
+                #if 0
                 printf("WARNING: table %s - %s conflict\n", op_to_str(table->data[index].type), op_to_str(op.type));
                 fprint_BNF(stdout, meta_expr_table[index]);
                 printf("\n");
@@ -868,13 +868,13 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
 
                 if (table_expr_precedence < new_expr_precedence)
                 {
-                    #if 1
+                    #if 0
                     printf("Choosing table %s resolution\n", op_to_str(table->data[index].type));
                     #endif
                 }
                 else
                 {
-                    #if 1
+                    #if 0
                     printf("Choosing %s resolution\n", op_to_str(op.type));
                     #endif
                     table->data[index] = op;
@@ -1009,39 +1009,18 @@ static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list,
 }
 
 
-
-
-
-
-
-
-
-
-static String sub_string(String str, Usize start, Usize end)
-{
-    String s = {};
-
-    if (start > str.length || end > str.length || start > end)
-    {
-        return s;
-    }
-
-    s.data = &str.data[start];
-    s.length = end - start + 1;
-
-    return s;    
-}
+#include "ptg.hpp"
 
 struct Expr
 {
-    I64 lr_item;
+    ParseToken token;
     Usize expr_count;
     Expr *exprs[16];
 };
 
 
 
-static bool parse_tokens_with_parse_table(I64 *token_list, Usize token_count, ParseTable *table, Lexer *lex, Expr **syntax_tree_out)
+static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, Lexer *lex, Expr **syntax_tree_out)
 {
     Usize table_width = lex->LR_items_count;
 
@@ -1067,13 +1046,18 @@ static bool parse_tokens_with_parse_table(I64 *token_list, Usize token_count, Pa
 
 
     bool active = true;
-    bool succeded_parsing = true;
+    bool succeded_parsing = false;
 
 
     for (Usize index = 0; active;)
     {
-
-        I64 lookahead_lr_index = token_list[index];
+        if (index > token_count)
+        {
+            active = false;
+            succeded_parsing = false;
+            break; 
+        }
+        I64 lookahead_lr_index = token_list[index].token_type;
         if (lookahead_lr_index < 0 || lookahead_lr_index >= (I64)table->LR_items_count)
         {
             // provided token not found in grammar
@@ -1102,7 +1086,8 @@ static bool parse_tokens_with_parse_table(I64 *token_list, Usize token_count, Pa
                 {
                     Expr *expr = alloc<Expr>(1);
                     expr->expr_count = 0;
-                    expr->lr_item = lookahead_lr_index;
+                    if (index > token_count)
+                    expr->token = token_list[index];
                     assert(expr_stack_count > 0);
                     expr_stack[--expr_stack_count] = expr;
                 }
@@ -1120,9 +1105,13 @@ static bool parse_tokens_with_parse_table(I64 *token_list, Usize token_count, Pa
                 Expr *right_hand_expr = nullptr;
                 if (syntax_tree_out != nullptr)
                 {
+                    ParseToken token = {};
+                    token.token_type = right_hand_side_nonterminal;
+                    token.data = current_expr->non_terminal.data.data; 
+
                     right_hand_expr = alloc<Expr>(1);
                     right_hand_expr->expr_count = 0;
-                    right_hand_expr->lr_item = right_hand_side_nonterminal;
+                    right_hand_expr->token = token;
                 }
 
                 for (I64 i = (I64)current_prod->count - 1; i >= 0; --i)
@@ -1401,7 +1390,7 @@ static void graph_from_syntax_tree(const char *file_path, Expr *tree_list, Lexer
     while (stack_count < stack_size)
     {
         Expr *active_expr = expr_stack[stack_count++];
-        String ir_str = string_from_lr_index(lex, active_expr->lr_item);
+        String ir_str = string_from_lr_index(lex, active_expr->token.token_type);
         fprintf(f, "n%llu [label=\"%.*s\"];\n", (Usize)active_expr, (int)ir_str.length, ir_str.data);
         for (I64 i = (I64)active_expr->expr_count - 1; i >= 0; --i)
         {
@@ -1481,6 +1470,7 @@ enum class OutputTarget
     TEXT,
     C,
     RUST,
+    GRAPH,
 };
 
 // if output_path is null, the function will write to stdout
@@ -1577,10 +1567,11 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         } break;
         case OutputTarget::C:
         {
+            assert(false && "not implemented");
             const char *pre = "int table[] = {"; 
             Usize pre_len = str_len(pre);
             const char *post = "};\n";
-            const char *parse_function = "";
+            // const char *parse_function = "";
             Usize data_str_size = pre_len + 24 * table->data_size + str_len(post);
             char *data_str = alloc<char>(data_str_size);
             memset(data_str, 0, sizeof(*data_str) * data_str_size);
@@ -1701,7 +1692,6 @@ int main(int argc, const char **argv)
 
 
 
-#include "ptg.hpp"
 
 Lexer *create_lexer_from_bnf(const char *src)
 {
@@ -1710,21 +1700,21 @@ Lexer *create_lexer_from_bnf(const char *src)
     return lex;
 }
 
-State *create_state_list(Lexer *lex, unsigned int *state_count)
+State *create_state_list(Lexer *lex, U32 *state_count)
 {
     State *state_list = alloc<State>(512);
     create_all_substates(state_list, state_count, lex);
     return state_list;
 }
 
-ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, unsigned int state_count, int flags)
+ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, U32 state_count, int flags)
 {
     (void)flags;
     ParseTable *table = create_parse_table_from_states(lex, state_list, state_count);
     return table;
 }
 
-bool parse(long long *token_list, unsigned int token_count, ParseTable *table, Lexer *lex)
+bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, Lexer *lex)
 {
     return parse_tokens_with_parse_table(token_list, token_count, table, lex, nullptr);
 }
@@ -1735,7 +1725,7 @@ void print_table(ParseTable *table)
 }
 
 
-void write_states_as_graph(void *file_handle, State *state_list, unsigned int state_count)
+void write_states_as_graph(void *file_handle, State *state_list, U32 state_count)
 {
     graph_from_state_list((FILE *)file_handle, state_list, state_count);
 }

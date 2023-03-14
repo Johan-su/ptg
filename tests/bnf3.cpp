@@ -52,7 +52,7 @@ static const char *bnf_source =
     ":";
 
 
-static long long token_list[128] = {};
+static ParseToken token_list[128] = {};
 static unsigned int token_count = 0;
 
 static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
@@ -61,20 +61,20 @@ static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == '+') token_list[token_count++] = TOKEN_plus;
-        else if (str[index] == '0') token_list[token_count++] = TOKEN_0;
-        else if (str[index] == '1') token_list[token_count++] = TOKEN_1;
-        else if (str[index] == '2') token_list[token_count++] = TOKEN_2;
-        else if (str[index] == '3') token_list[token_count++] = TOKEN_3;
-        else if (str[index] == '4') token_list[token_count++] = TOKEN_4;
-        else if (str[index] == '5') token_list[token_count++] = TOKEN_5;
-        else if (str[index] == '6') token_list[token_count++] = TOKEN_6;
-        else if (str[index] == '7') token_list[token_count++] = TOKEN_7;
-        else if (str[index] == '8') token_list[token_count++] = TOKEN_8;
-        else if (str[index] == '9') token_list[token_count++] = TOKEN_9;
+        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index]};
+        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index]};
+        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index]};
+        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index]};
+        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index]};
+        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index]};
+        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index]};
+        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index]};
+        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index]};
+        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index]};
+        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index]};
         else return false;
     }
-    token_list[token_count++] = TOKEN_End;
+    token_list[token_count++] = {TOKEN_End, nullptr};
 
    return parse(token_list, token_count, table, lex);
 }
