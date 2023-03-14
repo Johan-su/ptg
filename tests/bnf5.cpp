@@ -11,8 +11,8 @@ enum Token
 
 static const char *bnf_source =
     "TOKENS"
-    "\"a\";"
-    "\"End\";"
+    "a;"
+    "End;"
     ":"
     "BNF"
     "<S> := <E>;"

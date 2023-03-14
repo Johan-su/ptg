@@ -268,9 +268,9 @@ struct Lexer
 static void add_non_terminal_if_not_already_in_lexer(Lexer *lex, String non_terminal)
 {
     Usize non_terminal_count = lex->LR_items_count - lex->terminals_count;
-    for (Usize i = lex->terminals_count; i < non_terminal_count; ++i)
+    for (Usize i = 0; i < non_terminal_count; ++i)
     {
-        if (is_str(lex->LR_items[i], non_terminal))
+        if (is_str(lex->LR_items[i + lex->terminals_count], non_terminal))
         {
             return;
         }
@@ -1288,7 +1288,7 @@ static void parse_token(const char *src, Usize *cursor, Lexer *lex)
     String token_str = {};
     token_str.data = &src[*cursor];
     Usize count = 0;
-    while (src[*cursor] != '\"')
+    while (src[*cursor] != ';')
     {
         if (src[*cursor] == '\0')
         {
@@ -1318,10 +1318,7 @@ static void parse_bnf_src(Lexer *lex, const char *src)
         while (src[cursor] != ':')
         {
             move_past_whitespace(src, &cursor);
-            expect(src, &cursor, "\"");
             parse_token(src, &cursor, lex);
-            expect(src, &cursor, "\"");
-            move_past_whitespace(src, &cursor);
             expect(src, &cursor, ";");
             move_past_whitespace(src, &cursor);
         }
