@@ -72,7 +72,7 @@ static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
         else if (str[index] == '7') token_list[token_count++] = TOKEN_7;
         else if (str[index] == '8') token_list[token_count++] = TOKEN_8;
         else if (str[index] == '9') token_list[token_count++] = TOKEN_9;
-        else assert(false);
+        else return false;
     }
     token_list[token_count++] = TOKEN_End;
 

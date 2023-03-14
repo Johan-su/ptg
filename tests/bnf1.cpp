@@ -34,7 +34,7 @@ static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
     {
         if (str[index] == 'a') token_list[token_count++] = TOKEN_a;
         else if (str[index] == 't') token_list[token_count++] = TOKEN_t;
-        else assert(false);
+        else return false;
     }
     token_list[token_count++] = TOKEN_End;
 
