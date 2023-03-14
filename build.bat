@@ -15,7 +15,7 @@ cd ./tests
 
 %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf1.cpp %FLAGS% -Wno-unused-function -o bnf1.exe
 %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf2.cpp %FLAGS% -Wno-unused-function -o bnf2.exe
-@REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf3.cpp %FLAGS% -Wno-unused-function -o bnf3.exe
+%CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf3.cpp %FLAGS% -Wno-unused-function -o bnf3.exe
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf4.cpp %FLAGS% -Wno-unused-function -o bnf4.exe
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf5.cpp %FLAGS% -Wno-unused-function -o bnf5.exe
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf6.cpp %FLAGS% -Wno-unused-function -o bnf6.exe
@@ -23,7 +23,7 @@ cd ./tests
 
 bnf1.exe
 bnf2.exe
-@REM bnf3.exe
+bnf3.exe
 @REM bnf4.exe
 @REM bnf5.exe
 @REM bnf6.exe
