@@ -775,12 +775,12 @@ static void print_parse_table(ParseTable *table)
     for (Usize i = 0; i < table->expr_count; ++i)
     {
         ParseExpr *expr_header = (ParseExpr *)data;
-        (ParseExpr *)data += 1;
+        data = (U8 *)((ParseExpr *)data + 1);
         printf("<%lld> ->", expr_header->non_terminal);
-        for (Usize j = 0; j < expr_header->production_count)
+        for (Usize j = 0; j < expr_header->production_count; ++j)
         {
             I64 *prod = (I64 *)data;
-            (I64 *)data += 1;
+            data = (U8 *)((I64 *)data + 1);
             printf(" %lld", *prod);
         }
         printf("\n");
@@ -902,32 +902,37 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
 static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, Usize state_count)
 {
 
-    // get byte size of all expressions
-    Usize byte_count = 0;
-    for (I64 i = 0; i < (I64)lex->expr_count; ++i)
+    Usize table_size;
+    ParseTable *parse_table;
+    BNFExpression **meta_expr_table;
     {
-        BNFExpression *expr = &lex->exprs[i];
-        I64 non_terminal = get_ir_item_index(lex, expr->non_terminal.data);
-        byte_count += sizeof(non_terminal);
-        for (I64 j = 0; j < expr->prod.count; ++j)
+        // get byte size of all productions
+        Usize prods_size = 0;
+        for (Usize i = 0; i < lex->expr_count; ++i)
         {
-            I64 prod = get_ir_item_index(lex, expr->prod.expressions[j].data);
-            byte_count += sizeof(prod);
+            BNFExpression *expr = &lex->exprs[i];
+            prods_size += sizeof(expr->prod.expressions[0]) * expr->prod.count;
         }
+
+        // TODO(Johan) add exprs to parse table
+
+        table_size = state_count * lex->LR_items_count;
+        Usize parse_table_size = sizeof(*parse_table) + 
+            sizeof(ParseExpr) * lex->expr_count + prods_size + 
+            sizeof(TableOperation) * table_size;
+
+        parse_table = (ParseTable *)malloc(parse_table_size);
+        memset(parse_table, 0, parse_table_size);
+
+        parse_table->LR_items_count = lex->LR_items_count;
+        parse_table->data_size = table_size;
+
+        meta_expr_table = alloc<BNFExpression *>(table_size);
+        memset(meta_expr_table, 0, sizeof(*meta_expr_table) * table_size);
 
     }
 
-    // TODO(Johan) add exprs to parsetable
-
-    Usize table_size = state_count * lex->LR_items_count;
-    ParseTable *parse_table = (ParseTable *)malloc(sizeof(*parse_table) + sizeof(parse_table->data[0]) * table_size);
-    memset(parse_table, 0, sizeof(*parse_table) + sizeof(parse_table->data[0]) * table_size);
-
-    parse_table->LR_items_count = lex->LR_items_count;
-    parse_table->data_size = table_size;
-
-    BNFExpression **meta_expr_table = alloc<BNFExpression *>(table_size);
-    memset(meta_expr_table, 0, sizeof(*meta_expr_table) * table_size);
+    U8 *table_entry = parse_table->data;
 
     for (Usize i = 0; i < state_count; ++i)
     {
