@@ -17,7 +17,7 @@ int main(void)
     Lexer *lexer = create_lexer_from_bnf(bnf_source);
     unsigned int state_count;
     State *state_list = create_state_list(lexer, &state_count);
-    TableOperation *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
+    ParseTable *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
 
 
 

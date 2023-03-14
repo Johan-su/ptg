@@ -1,8 +1,7 @@
 #ifndef PTG_HEADER_HPP
 #define PTG_HEADER_HPP
 
-
-struct TableOperation;
+struct ParseTable;
 struct Lexer;
 struct State;
 
@@ -19,9 +18,9 @@ extern State *create_state_list(Lexer *lex, unsigned int *state_count);
 #define DISPLAY_WARNINGS (1 << 1)
 #define DISPLAY_ERRORS (1 << 2)
 
-extern TableOperation *create_parse_table_from_state_list(Lexer *lex, State *state_list, unsigned int state_count, int flags);
-extern bool parse(const char *src, TableOperation *table, Lexer *lex);
-extern void print_table(TableOperation *table, Lexer *lex, unsigned int state_count);
+extern ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, unsigned int state_count, int flags);
+extern bool parse(long long *token_list, unsigned int token_count, ParseTable *table, Lexer *lex);
+extern void print_table(ParseTable *table);
 extern void write_states_as_graph(void *file_handle, State *state_list, unsigned int state_count);
 
 // extern unsigned int get_size_of_table_as_str(TableOperation *table);
