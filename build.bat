@@ -14,7 +14,7 @@ if not exist tests mkdir tests
 cd ./tests
 
 %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf1.cpp %FLAGS% -Wno-unused-function -o bnf1.exe
-@REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf2.cpp %FLAGS% -Wno-unused-function -o bnf2.exe
+%CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf2.cpp %FLAGS% -Wno-unused-function -o bnf2.exe
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf3.cpp %FLAGS% -Wno-unused-function -o bnf3.exe
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf4.cpp %FLAGS% -Wno-unused-function -o bnf4.exe
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf5.cpp %FLAGS% -Wno-unused-function -o bnf5.exe
@@ -22,7 +22,7 @@ cd ./tests
 @REM %CLANG% -D PTG_LIB ../../src/ptg.cpp ../../tests/bnf7.cpp %FLAGS% -Wno-unused-function -o bnf7.exe
 
 bnf1.exe
-@REM bnf2.exe
+bnf2.exe
 @REM bnf3.exe
 @REM bnf4.exe
 @REM bnf5.exe
