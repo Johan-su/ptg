@@ -769,7 +769,7 @@ static const char *op_to_str(TableOperationType op)
     return nullptr;
 }
 
-struct TableOperation_
+struct TableOperation
 {
     TableOperationType type;
     U32 arg;
@@ -780,12 +780,30 @@ struct ParseTable
 {
     Usize LR_items_count;
     Usize data_size;
-    TableOperation_ data[];
+    TableOperation data[];
 };
+
+static void print_parse_table(ParseTable *parse_table)
+{
+    Usize table_height = parse_table->data_size / parse_table->LR_items_count;
+    Usize table_width = parse_table->LR_items_count;
+    for (Usize y = 0; y < table_height; ++y)
+    {
+        TableOperation *row = &parse_table->data[y * table_width];
+        for (Usize x = 0; x < table_width; ++x)
+        {
+            TableOperation *op = row + x;
+
+            printf("[%-7s, %u] ", op_to_str(op->type), op->arg);
+        }
+        printf("\n");
+    }
+}
+
 
 
 static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_table, Usize table_size,
-    BNFExpression *expr, I64 look_ahead_index, Usize state_id, TableOperation_ op)
+    BNFExpression *expr, I64 look_ahead_index, Usize state_id, TableOperation op)
 {
     assert (look_ahead_index >= 0);
 
@@ -813,7 +831,7 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
             }
             else
             {
-                #if 0
+                #if 1
                 printf("WARNING: table %s - %s conflict\n", op_to_str(table->data[index].type), op_to_str(op.type));
                 fprint_BNF(stdout, meta_expr_table[index]);
                 printf("\n");
@@ -850,13 +868,13 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
 
                 if (table_expr_precedence < new_expr_precedence)
                 {
-                    #if 0
+                    #if 1
                     printf("Choosing table %s resolution\n", op_to_str(table->data[index].type));
                     #endif
                 }
                 else
                 {
-                    #if 0
+                    #if 1
                     printf("Choosing %s resolution\n", op_to_str(op.type));
                     #endif
                     table->data[index] = op;
@@ -870,6 +888,7 @@ static void table_set(Lexer *lex, ParseTable *table, BNFExpression **meta_expr_t
         } break;
         case TableOperationType::ACCEPT:
         {
+            print_parse_table(table);
             assert(false);
         } break;
         default: assert(false && "Unreachable");     
@@ -921,7 +940,7 @@ static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list,
 
             if (edge->creation_token.type == TokenType::NONTERMINAL)
             {
-                TableOperation_ op = {};
+                TableOperation op = {};
                 op.type = TableOperationType::GOTO;
                 op.arg = edge->state_id;
                 I64 lr_index = get_ir_item_index(lex, edge->creation_token.data);
@@ -929,7 +948,7 @@ static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list,
             }
             else if (edge->creation_token.type == TokenType::TERMINAL)
             {
-                TableOperation_ op = {};
+                TableOperation op = {};
                 op.type = TableOperationType::SHIFT;
                 op.arg = edge->state_id;
                 I64 lr_index = get_ir_item_index(lex, edge->creation_token.data);
@@ -946,17 +965,17 @@ static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list,
         for (Usize j = 0; j < state->expr_count; ++j)
         {
             BNFExpression *expr = &state->exprs[j];
-            if (is_str(expr->prod.expressions[expr->dot].data, lex->LR_items[lex->LR_items_count - 1]))
+            if (is_str(expr->prod.expressions[expr->dot].data, lex->LR_items[lex->terminals_count - 1]))
             {
-                TableOperation_ op = {};
+                TableOperation op = {};
                 op.type = TableOperationType::ACCEPT;
                 op.arg = 0;
                 table_set(lex, parse_table, meta_expr_table, table_size, 
-                    expr, (I64)lex->LR_items_count - 1, state->state_id, op);
+                    expr, (I64)lex->terminals_count - 1, state->state_id, op);
             }
             else if (expr->dot >= expr->prod.count)
             {
-                TableOperation_ op {};
+                TableOperation op {};
                 op.type = TableOperationType::REDUCE;
 
                 I64 index = -1;
@@ -992,22 +1011,7 @@ static ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list,
 
 
 
-static void print_parse_table(ParseTable *parse_table)
-{
-    Usize table_height = parse_table->data_size / parse_table->LR_items_count;
-    Usize table_width = parse_table->LR_items_count;
-    for (Usize y = 0; y < table_height; ++y)
-    {
-        TableOperation_ *row = &parse_table->data[y * table_width];
-        for (Usize x = 0; x < table_width; ++x)
-        {
-            TableOperation_ *op = row + x;
 
-            printf("[%-7s, %u] ", op_to_str(op->type), op->arg);
-        }
-        printf("\n");
-    }
-}
 
 
 
@@ -1079,7 +1083,7 @@ static bool parse_tokens_with_parse_table(I64 *token_list, Usize token_count, Pa
         }
 
 
-        TableOperation_ op = table->data[(Usize)lookahead_lr_index + state_stack[state_count] * table_width];
+        TableOperation op = table->data[(Usize)lookahead_lr_index + state_stack[state_count] * table_width];
         switch (op.type)
         {
             case TableOperationType::INVALID:
