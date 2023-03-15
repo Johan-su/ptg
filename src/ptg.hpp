@@ -41,7 +41,7 @@ extern State *create_state_list(Lexer *lex, U32 *state_count);
 #define DISPLAY_ERRORS (1 << 2)
 
 extern ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, U32 state_count, int flags);
-extern bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, Lexer *lex);
+extern bool parse(ParseToken *token_list, U32 token_count, ParseTable *table);
 extern void print_table(ParseTable *table);
 extern void write_states_as_graph(void *file_handle, State *state_list, U32 state_count);
 
