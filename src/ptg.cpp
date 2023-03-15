@@ -683,7 +683,7 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
     assert (look_ahead_index >= 0);
 
     Usize index = (Usize)look_ahead_index + state_id * lex->LR_items_count;
-    assert(index < table_size);
+    assert(index < table_size);(void)table_size;
     switch (table[index].type)
     {
         case TableOperationType::INVALID:
@@ -1048,8 +1048,12 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                     I64 prod_lr = current_expr->prods[i];
                     state_count += 1;
                     
-                    // TODO(Johan): change to error handling/fail parse
-                    assert(lr_item == prod_lr);
+                    if (lr_item != prod_lr)
+                    {
+                        active = false;
+                        succeded_parsing = false;
+                        break;
+                    }
 
 
                     if (syntax_tree_out != nullptr)

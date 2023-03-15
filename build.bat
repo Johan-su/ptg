@@ -1,13 +1,15 @@
 @echo off
 set CLANG=clang++
 set WARNINGS=-Wall -Wpedantic -Wextra -Wconversion -Wshadow -Wno-c++20-designator -Wno-c++17-extensions -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-gnu-zero-variadic-macro-arguments -Wno-c99-extensions
-set FLAGS=-O0 -D _DEBUG -D _CRT_SECURE_NO_WARNINGS  -g -gcodeview -std=c++11 %WARNINGS%
+@REM set FLAGS=-O0 -D _DEBUG -D _CRT_SECURE_NO_WARNINGS  -g -gcodeview -std=c++11 %WARNINGS%
+set FLAGS=-O2 -D _CRT_SECURE_NO_WARNINGS -std=c++11 %WARNINGS%
 
 
 if not exist build mkdir build
 cd ./build
 
 
+%CLANG% -shared ../src/ptg.cpp %FLAGS% -D BUILD_DLL -o ptg.dll
 %CLANG% ../src/ptg.cpp ../src/ptg_cmd.cpp %FLAGS% -o ptg.exe
 
 if not exist tests mkdir tests

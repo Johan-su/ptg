@@ -147,9 +147,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         } break;
         case OutputTarget::BINARY:
         {
-            Usize table_size_binary = sizeof(*table) * table->data_size;
-            write_output_data_to_target(&table_size_binary, sizeof(table_size_binary), output_path);
-            write_output_data_to_target(table, table_size_binary, output_path);
+            write_output_data_to_target(table, table->data_size, output_path);
         } break;
         case OutputTarget::TEXT:
         {
@@ -186,9 +184,10 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             strcat(data_str, pre);
             char temp_buf[5];
 
+            U8 *bin_table = (U8 *)table;
             for (Usize i = 0; i < table->data_size; ++i)
             {
-                snprintf(temp_buf, sizeof(temp_buf), "%u,", table->data[i]);
+                snprintf(temp_buf, sizeof(temp_buf), "%u,", bin_table[i]);
                 strcat(data_str, temp_buf);
             }
             strcat(data_str, post);
@@ -198,7 +197,25 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         } break;
         case OutputTarget::RUST:
         {
-            assert(false && "not implemented");
+            char temp_buffer[64] = {};
+            unsigned int pre_len = (unsigned int)snprintf(temp_buffer, sizeof(temp_buffer), "const table : [u8; %u] = [", table->data_size);
+            const char *post = "];\n";
+            Usize data_str_size = pre_len + 4 * table->data_size + str_len(post);
+            char *data_str = alloc<char>(data_str_size);
+            memset(data_str, 0, sizeof(*data_str) * data_str_size);
+            strcat(data_str, temp_buffer);
+            char temp_buf[5];
+
+            U8 *bin_table = (U8 *)table;
+            for (Usize i = 0; i < table->data_size; ++i)
+            {
+                snprintf(temp_buf, sizeof(temp_buf), "%u,", bin_table[i]);
+                strcat(data_str, temp_buf);
+            }
+            strcat(data_str, post);
+
+            write_output_data_to_target(data_str, sizeof(*data_str) * str_len(data_str), output_path);
+            free(data_str);
         } break;
 
     }
@@ -271,14 +288,4 @@ int main(int argc, const char **argv)
     }
 
     return create_parsing_table_from_cmd(source_path, output_path, output_target);
-
-   
-
-
-
-
-    
-
-
-    return 0; 
 }
