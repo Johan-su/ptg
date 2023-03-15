@@ -5,10 +5,10 @@ set FLAGS=-O0 -D _DEBUG -D _CRT_SECURE_NO_WARNINGS  -g -gcodeview -std=c++11 %WA
 
 
 if not exist build mkdir build
-
 cd ./build
 
-%CLANG% ../src/ptg.cpp %FLAGS% -o ptg.exe
+
+%CLANG% ../src/ptg.cpp ../src/ptg_cmd.cpp %FLAGS% -o ptg.exe
 
 if not exist tests mkdir tests
 cd ./tests

@@ -24,6 +24,12 @@ struct ParseToken
     I64 token_type;
     const char *data;
 };
+struct Expr
+{
+    ParseToken token;
+    U32 expr_count;
+    Expr *exprs[16];
+};
 struct Lexer;
 struct State;
 
@@ -36,12 +42,11 @@ struct State;
 extern Lexer *create_lexer_from_bnf(const char *src);
 extern State *create_state_list(Lexer *lex, U32 *state_count);
 
-#define DISPLAY_INFO (1 << 0)
-#define DISPLAY_WARNINGS (1 << 1)
-#define DISPLAY_ERRORS (1 << 2)
-
-extern ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, U32 state_count, int flags);
-extern bool parse(ParseToken *token_list, U32 token_count, ParseTable *table);
+extern void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list, Lexer *lex);
+extern ParseTable *create_parse_table_from_state_list(Lexer *lex, State *state_list, U32 state_count);
+extern bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, Expr **opt_tree_out);
+extern bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, Expr **opt_tree_out);
+extern Usize get_table_size(ParseTable *table);
 extern void print_table(ParseTable *table);
 extern void write_states_as_graph(void *file_handle, State *state_list, U32 state_count);
 
