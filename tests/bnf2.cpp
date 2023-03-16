@@ -43,7 +43,7 @@ static bool parse_str(const char *str, ParseTable *table)
         else if (str[index] == 'b') token_list[token_count++] = {TOKEN_b, &str[index], 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 1};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
    return parse(token_list, token_count, table, 0, nullptr);
 }
@@ -57,7 +57,7 @@ int main(void)
     assert(!parse_str("", table));
     assert(parse_str("a", table));
     assert(parse_str("b", table));
-}
+    printf("Finished %s\n", __FILE__);}
 
 
 

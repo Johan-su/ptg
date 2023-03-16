@@ -61,4 +61,5 @@ int main(void)
     assert(!parse_str("aaaaat", table));
     assert(!parse_str("ata", table));
     assert(!parse_str("ataatatatatatatatatattttatatataat", table));
+    printf("Finished %s\n", __FILE__);
 }

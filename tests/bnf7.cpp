@@ -174,7 +174,7 @@ static const char *bnf_source =
 static ParseToken token_list[512] = {};
 static unsigned int token_count = 0;
 
-static bool parse_str(const char *str, ParseTable *table)
+static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
 {
     token_count = 0;
     int index = 0;
@@ -225,9 +225,9 @@ static bool parse_str(const char *str, ParseTable *table)
         else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index], 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 1};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
-   return parse(token_list, token_count, table, 0, nullptr);
+   return parse(token_list, token_count, table, 0, out_tree);
 }
 
 
@@ -238,14 +238,15 @@ int main(void)
     ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
 
+    Expr *tree;
 
-
-    assert(parse_str("", table));
-    assert(parse_str("1+1", table));
-    assert(parse_str("1*1", table));
-    assert(parse_str("1/1", table));
-    assert(parse_str("1-1", table));
-    assert(parse_str("-1+1", table));
-    assert(parse_str("--1*1", table));
-    assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table));
-}
+    assert(parse_str("", table, nullptr));
+    assert(parse_str("1+1", table, nullptr));
+    assert(parse_str("1*1", table, nullptr));
+    assert(parse_str("1/1", table, nullptr));
+    assert(parse_str("1-1", table, nullptr));
+    assert(parse_str("-1+1", table, nullptr));
+    assert(parse_str("--1*1", table, &tree));
+    assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, nullptr));
+    graphviz_from_syntax_tree("./input.dot", tree);
+    printf("Finished %s\n", __FILE__);}

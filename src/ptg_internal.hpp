@@ -22,12 +22,14 @@ do                                                                              
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 
-template<typename T>
-static T *alloc(Usize amount)
+static inline void *debug_malloc(size_t size, const char *file, int line)
 {
-    return (T *)malloc(sizeof(T) * amount);
+    fprintf(stderr, "allocated %llu bytes, at %s:%d\n", size, file, line);
+    return malloc(size);
 }
 
+// #define malloc(size) debug_malloc(size, __FILE__, __LINE__)
+#define alloc(type, amount) (type *)malloc(sizeof(type) * amount)
 
 typedef uint8_t U8;
 typedef uint16_t U16;
@@ -56,18 +58,27 @@ struct ParseExpr
     I64 prods[];
 };
 
+struct StringHeader
+{
+    U32 count;
+    U8 chars[];
+};
 
 struct ParseTable
 {
     U32 data_size;
-    U32 state_count;
-    U32 LR_items_count;
 
+    U32 string_start;
+    U32 string_count;
+    U32 string_header_size;
 
-
+    U32 expr_start;
     U32 expr_count;
     U32 expr_header_size;
 
+    U32 table_start;
+    U32 state_count;
+    U32 LR_items_count;
     
     U8 data[];
 };
@@ -81,22 +92,18 @@ enum class TokenType
 
 struct BNFToken
 {
-    String data;
     TokenType type; 
-};
-
-struct Production
-{
-    BNFToken expressions[64];
-    U32 count;
+    String data;
 };
 
 struct BNFExpression
 {
     BNFToken non_terminal;
-    Production prod;
     U32 dot;
     BNFToken look_ahead;
+
+    U32 prod_count;
+    BNFToken *prod_tokens;
 };
 
 struct FirstSet

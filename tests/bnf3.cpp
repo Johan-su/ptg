@@ -74,7 +74,7 @@ static bool parse_str(const char *str, ParseTable *table)
         else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index], 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 1};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
    return parse(token_list, token_count, table, 0, nullptr);
 }
@@ -93,4 +93,4 @@ int main(void)
     assert(parse_str("+", table));
     assert(!parse_str("00", table));
     assert(!parse_str("5120412505721057214901279+4", table));
-}
+    printf("Finished %s\n", __FILE__);}
