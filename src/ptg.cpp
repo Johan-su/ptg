@@ -1279,6 +1279,18 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
     fclose(f);
 }
 
+U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
+{
+    ParseTable *table = create_parse_table_from_bnf(src);
+    U32 table_size = table->data_size;
+    if (buffer == nullptr || table_size > buffer_size)
+    {
+        return table_size;
+    }
+    memcpy(buffer, table, table_size);
+    return table_size;
+}
+
 ParseTable *create_parse_table_from_bnf(const char *src)
 {
     Lexer *lex = alloc<Lexer>(1);

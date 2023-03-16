@@ -42,7 +42,7 @@ struct Expr
 };
 
 
-
+PTG_DEFINE U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src);
 PTG_DEFINE ParseTable *create_parse_table_from_bnf(const char *src);
 
 PTG_DEFINE void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list);
