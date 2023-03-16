@@ -125,15 +125,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         return -1;
     }
 
-    ParseTable *table;
-    {
-        Lexer *lex = create_lexer_from_bnf(bnf_src);
-        U32 state_count;
-        State *states = create_state_list(lex, &state_count);
-        table = create_parse_table_from_state_list(lex, states, state_count);
-        free(lex);
-        free(states);
-    }
+    ParseTable *table = create_parse_table_from_bnf(bnf_src);
 
     
     TableOperation *table_data = (TableOperation *)((table->data + table->data_size) - sizeof(*table_data) * (table->LR_items_count * table->state_count));
@@ -219,6 +211,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         } break;
 
     }
+    free(table);
     return 0;
 }
 

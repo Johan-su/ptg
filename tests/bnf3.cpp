@@ -1,4 +1,4 @@
-#include "../src/ptg.hpp"
+#include "../src/ptg_internal.hpp"
 #include <assert.h>
 
 enum Token
@@ -55,45 +55,42 @@ static const char *bnf_source =
 static ParseToken token_list[128] = {};
 static unsigned int token_count = 0;
 
-static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
+static bool parse_str(const char *str, ParseTable *table)
 {
     token_count = 0;
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index]};
-        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index]};
-        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index]};
-        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index]};
-        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index]};
-        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index]};
-        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index]};
-        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index]};
-        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index]};
-        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index]};
-        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index]};
+        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1};
+        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index], 1};
+        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index], 1};
+        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index], 1};
+        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index], 1};
+        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index], 1};
+        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index], 1};
+        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index], 1};
+        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index], 1};
+        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index], 1};
+        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index], 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr};
+    token_list[token_count++] = {TOKEN_End, nullptr, 1};
 
-   return parse(token_list, token_count, table, lex);
+   return parse(token_list, token_count, table, 0, nullptr);
 }
 
 
 
 int main(void)
 {
-    Lexer *lexer = create_lexer_from_bnf(bnf_source);
-    unsigned int state_count;
-    State *state_list = create_state_list(lexer, &state_count);
-    ParseTable *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
+    ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
-    assert(parse_str("", table, lexer));
-    assert(parse_str("1+1", table, lexer));
-    assert(parse_str("5+1", table, lexer));
-    assert(parse_str("5+4+3+2+1", table, lexer));
-    assert(parse_str("+4+3+2+", table, lexer));
-    assert(parse_str("+", table, lexer));
-    assert(!parse_str("00", table, lexer));
-    assert(!parse_str("5120412505721057214901279+4", table, lexer));
+    assert(parse_str("", table));
+    assert(parse_str("1+1", table));
+    assert(parse_str("5+1", table));
+    assert(parse_str("5+4+3+2+1", table));
+    assert(parse_str("+4+3+2+", table));
+    assert(parse_str("+", table));
+    assert(!parse_str("00", table));
+    assert(!parse_str("5120412505721057214901279+4", table));
 }

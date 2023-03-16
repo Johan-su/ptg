@@ -41,6 +41,14 @@ typedef int16_t I16;
 typedef int32_t I32;
 typedef int64_t I64;
 
+
+struct String
+{
+    const char *data;
+    Usize length;
+};
+
+
 struct ParseExpr
 {
     I64 non_terminal;
@@ -64,11 +72,61 @@ struct ParseTable
     U8 data[];
 };
 
-struct String
+enum class TokenType
 {
-    const char *data;
-    Usize length;
+    INVALID,
+    TERMINAL,
+    NONTERMINAL,
 };
+
+struct BNFToken
+{
+    String data;
+    TokenType type; 
+};
+
+struct Production
+{
+    BNFToken expressions[64];
+    U32 count;
+};
+
+struct BNFExpression
+{
+    BNFToken non_terminal;
+    Production prod;
+    U32 dot;
+    BNFToken look_ahead;
+};
+
+struct FirstSet
+{
+    Usize terminal_count;
+    String terminals[128];
+};
+
+struct Lexer
+{
+    BNFExpression exprs[2048];
+    U32 expr_count;
+
+    U32 terminals_count;
+    U32 LR_items_count;
+    String LR_items[128];
+
+    FirstSet *first_sets;
+};
+
+struct State
+{
+    BNFToken creation_token;
+    U32 state_id;
+    U32 expr_count;
+    State *edges[512];
+    BNFExpression exprs[512];
+};
+
+
 
 enum class TableOperationType
 {
@@ -131,3 +189,7 @@ static const char *op_to_str(TableOperationType op)
     return nullptr;
 }
 
+ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count);
+void parse_bnf_src(Lexer *lex, const char *src);
+void create_all_substates(State *state_list, U32 *state_count, Lexer *lex);
+void graph_from_state_list(FILE *f, State *state_list, Usize state_count);

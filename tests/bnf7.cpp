@@ -1,4 +1,4 @@
-#include "../src/ptg.hpp"
+#include "../src/ptg_internal.hpp"
 #include <assert.h>
 
 
@@ -174,60 +174,60 @@ static const char *bnf_source =
 static ParseToken token_list[512] = {};
 static unsigned int token_count = 0;
 
-static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
+static bool parse_str(const char *str, ParseTable *table)
 {
     token_count = 0;
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index]};
-        else if (str[index] == 'b') token_list[token_count++] = {TOKEN_b, &str[index]};
-        else if (str[index] == 'c') token_list[token_count++] = {TOKEN_c, &str[index]};
-        else if (str[index] == 'd') token_list[token_count++] = {TOKEN_d, &str[index]};
-        else if (str[index] == 'e') token_list[token_count++] = {TOKEN_e, &str[index]};
-        else if (str[index] == 'f') token_list[token_count++] = {TOKEN_f, &str[index]};
-        else if (str[index] == 'g') token_list[token_count++] = {TOKEN_g, &str[index]};
-        else if (str[index] == 'h') token_list[token_count++] = {TOKEN_h, &str[index]};
-        else if (str[index] == 'i') token_list[token_count++] = {TOKEN_i, &str[index]};
-        else if (str[index] == 'j') token_list[token_count++] = {TOKEN_j, &str[index]};
-        else if (str[index] == 'k') token_list[token_count++] = {TOKEN_k, &str[index]};
-        else if (str[index] == 'l') token_list[token_count++] = {TOKEN_l, &str[index]};
-        else if (str[index] == 'm') token_list[token_count++] = {TOKEN_m, &str[index]};
-        else if (str[index] == 'n') token_list[token_count++] = {TOKEN_n, &str[index]};
-        else if (str[index] == 'o') token_list[token_count++] = {TOKEN_o, &str[index]};
-        else if (str[index] == 'p') token_list[token_count++] = {TOKEN_p, &str[index]};
-        else if (str[index] == 'q') token_list[token_count++] = {TOKEN_q, &str[index]};
-        else if (str[index] == 'r') token_list[token_count++] = {TOKEN_r, &str[index]};
-        else if (str[index] == 's') token_list[token_count++] = {TOKEN_s, &str[index]};
-        else if (str[index] == 't') token_list[token_count++] = {TOKEN_t, &str[index]};
-        else if (str[index] == 'u') token_list[token_count++] = {TOKEN_u, &str[index]};
-        else if (str[index] == 'v') token_list[token_count++] = {TOKEN_v, &str[index]};
-        else if (str[index] == 'w') token_list[token_count++] = {TOKEN_w, &str[index]};
-        else if (str[index] == 'x') token_list[token_count++] = {TOKEN_x, &str[index]};
-        else if (str[index] == 'y') token_list[token_count++] = {TOKEN_y, &str[index]};
-        else if (str[index] == 'z') token_list[token_count++] = {TOKEN_z, &str[index]};
-        else if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index]};
-        else if (str[index] == '-') token_list[token_count++] = {TOKEN_minus, &str[index]};
-        else if (str[index] == '*') token_list[token_count++] = {TOKEN_times, &str[index]};
-        else if (str[index] == '/') token_list[token_count++] = {TOKEN_divide, &str[index]};
-        else if (str[index] == '=') token_list[token_count++] = {TOKEN_equal, &str[index]};
-        else if (str[index] == '(') token_list[token_count++] = {TOKEN_open, &str[index]};
-        else if (str[index] == ')') token_list[token_count++] = {TOKEN_close, &str[index]};
-        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index]};
-        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index]};
-        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index]};
-        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index]};
-        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index]};
-        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index]};
-        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index]};
-        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index]};
-        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index]};
-        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index]};
+        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index], 1};
+        else if (str[index] == 'b') token_list[token_count++] = {TOKEN_b, &str[index], 1};
+        else if (str[index] == 'c') token_list[token_count++] = {TOKEN_c, &str[index], 1};
+        else if (str[index] == 'd') token_list[token_count++] = {TOKEN_d, &str[index], 1};
+        else if (str[index] == 'e') token_list[token_count++] = {TOKEN_e, &str[index], 1};
+        else if (str[index] == 'f') token_list[token_count++] = {TOKEN_f, &str[index], 1};
+        else if (str[index] == 'g') token_list[token_count++] = {TOKEN_g, &str[index], 1};
+        else if (str[index] == 'h') token_list[token_count++] = {TOKEN_h, &str[index], 1};
+        else if (str[index] == 'i') token_list[token_count++] = {TOKEN_i, &str[index], 1};
+        else if (str[index] == 'j') token_list[token_count++] = {TOKEN_j, &str[index], 1};
+        else if (str[index] == 'k') token_list[token_count++] = {TOKEN_k, &str[index], 1};
+        else if (str[index] == 'l') token_list[token_count++] = {TOKEN_l, &str[index], 1};
+        else if (str[index] == 'm') token_list[token_count++] = {TOKEN_m, &str[index], 1};
+        else if (str[index] == 'n') token_list[token_count++] = {TOKEN_n, &str[index], 1};
+        else if (str[index] == 'o') token_list[token_count++] = {TOKEN_o, &str[index], 1};
+        else if (str[index] == 'p') token_list[token_count++] = {TOKEN_p, &str[index], 1};
+        else if (str[index] == 'q') token_list[token_count++] = {TOKEN_q, &str[index], 1};
+        else if (str[index] == 'r') token_list[token_count++] = {TOKEN_r, &str[index], 1};
+        else if (str[index] == 's') token_list[token_count++] = {TOKEN_s, &str[index], 1};
+        else if (str[index] == 't') token_list[token_count++] = {TOKEN_t, &str[index], 1};
+        else if (str[index] == 'u') token_list[token_count++] = {TOKEN_u, &str[index], 1};
+        else if (str[index] == 'v') token_list[token_count++] = {TOKEN_v, &str[index], 1};
+        else if (str[index] == 'w') token_list[token_count++] = {TOKEN_w, &str[index], 1};
+        else if (str[index] == 'x') token_list[token_count++] = {TOKEN_x, &str[index], 1};
+        else if (str[index] == 'y') token_list[token_count++] = {TOKEN_y, &str[index], 1};
+        else if (str[index] == 'z') token_list[token_count++] = {TOKEN_z, &str[index], 1};
+        else if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1};
+        else if (str[index] == '-') token_list[token_count++] = {TOKEN_minus, &str[index], 1};
+        else if (str[index] == '*') token_list[token_count++] = {TOKEN_times, &str[index], 1};
+        else if (str[index] == '/') token_list[token_count++] = {TOKEN_divide, &str[index], 1};
+        else if (str[index] == '=') token_list[token_count++] = {TOKEN_equal, &str[index], 1};
+        else if (str[index] == '(') token_list[token_count++] = {TOKEN_open, &str[index], 1};
+        else if (str[index] == ')') token_list[token_count++] = {TOKEN_close, &str[index], 1};
+        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index], 1};
+        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index], 1};
+        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index], 1};
+        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index], 1};
+        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index], 1};
+        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index], 1};
+        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index], 1};
+        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index], 1};
+        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index], 1};
+        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index], 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr};
+    token_list[token_count++] = {TOKEN_End, nullptr, 1};
 
-   return parse(token_list, token_count, table, lex);
+   return parse(token_list, token_count, table, 0, nullptr);
 }
 
 
@@ -235,20 +235,17 @@ static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
 
 int main(void)
 {
-    Lexer *lexer = create_lexer_from_bnf(bnf_source);
-    unsigned int state_count;
-    State *state_list = create_state_list(lexer, &state_count);
-    ParseTable *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
+    ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
 
 
 
-    assert(parse_str("", table, lexer));
-    assert(parse_str("1+1", table, lexer));
-    assert(parse_str("1*1", table, lexer));
-    assert(parse_str("1/1", table, lexer));
-    assert(parse_str("1-1", table, lexer));
-    assert(parse_str("-1+1", table, lexer));
-    assert(parse_str("--1*1", table, lexer));
-    assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, lexer));
+    assert(parse_str("", table));
+    assert(parse_str("1+1", table));
+    assert(parse_str("1*1", table));
+    assert(parse_str("1/1", table));
+    assert(parse_str("1-1", table));
+    assert(parse_str("-1+1", table));
+    assert(parse_str("--1*1", table));
+    assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table));
 }

@@ -1,4 +1,4 @@
-#include "../src/ptg.hpp"
+#include "../src/ptg_internal.hpp"
 #include <assert.h>
 
 
@@ -28,40 +28,37 @@ static unsigned int token_count = 0;
 
 
 
-static bool parse_str(const char *str, ParseTable *table, Lexer *lex)
+static bool parse_str(const char *str, ParseTable *table)
 {
     token_count = 0;
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index]};
-        else if (str[index] == 't') token_list[token_count++] = {TOKEN_t, &str[index]};
+        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index], 1};
+        else if (str[index] == 't') token_list[token_count++] = {TOKEN_t, &str[index], 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
-   return parse(token_list, token_count, table, lex);
+   return parse(token_list, token_count, table, 0, nullptr);
 }
 
 
 int main(void)
 {
-    Lexer *lexer = create_lexer_from_bnf(bnf_source);
-    unsigned int state_count;
-    State *state_list = create_state_list(lexer, &state_count);
-    ParseTable *table = create_parse_table_from_state_list(lexer, state_list, state_count, 0);
+    ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
-    print_table(table);
+    // print_table(table);
 
 
 
-    assert(!parse_str("", table, lexer));
-    assert(parse_str("a", table, lexer));
-    assert(!parse_str("t", table, lexer));
-    assert(parse_str("at", table, lexer));
-    assert(parse_str("att", table, lexer));
-    assert(parse_str("atttttttttttttttttttttttttttt", table, lexer));
-    assert(!parse_str("aaaaat", table, lexer));
-    assert(!parse_str("ata", table, lexer));
-    assert(!parse_str("ataatatatatatatatatattttatatataat", table, lexer));
+    assert(!parse_str("", table));
+    assert(parse_str("a", table));
+    assert(!parse_str("t", table));
+    assert(parse_str("at", table));
+    assert(parse_str("att", table));
+    assert(parse_str("atttttttttttttttttttttttttttt", table));
+    assert(!parse_str("aaaaat", table));
+    assert(!parse_str("ata", table));
+    assert(!parse_str("ataatatatatatatatatattttatatataat", table));
 }
