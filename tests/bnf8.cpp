@@ -1,6 +1,7 @@
 #include "../src/ptg_internal.hpp"
 #include <assert.h>
 
+#include <string.h>
 
 enum Token
 {
@@ -45,6 +46,8 @@ static bool is_whitespace(char c)
 static ParseToken token_list[512] = {};
 static unsigned int token_count = 0;
 
+static char msg[2048];
+
 static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
 {
     token_count = 0;
@@ -87,7 +90,8 @@ static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
-   return parse(token_list, token_count, table, 0, out_tree);
+    memset(msg, 0, sizeof(msg));
+    return parse(token_list, token_count, table, PRINT_EVERY_PARSE_STEP, out_tree, msg, sizeof(msg));
 }
 
 
@@ -115,6 +119,7 @@ int main(void)
     assert(parse_str("-1+1", table, nullptr));
     assert(parse_str("--1*1", table, nullptr));
     assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, &tree));
+    printf("%.*s\n", sizeof(msg), msg);
     graphviz_from_syntax_tree("./build/tests/input.dot", tree);
     free(bnf_source);
     printf("Finished %s\n", __FILE__);

@@ -3,7 +3,7 @@
 #include "ptg_internal.hpp"
 #include <stdio.h>
 #include <string.h>
-
+#include <stdarg.h>
 // https://cs.stackexchange.com/questions/152523/how-is-the-lookahead-for-an-lr1-automaton-computed
 // https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
 
@@ -989,7 +989,33 @@ static String get_string_from_lr(ParseTable *table, I64 lr)
     return str;
 }
 
-static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, U32 flags, Expr **syntax_tree_out)
+static bool print_formated_error(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, const char *format, ...)
+{
+    if (err_msg_out == nullptr || *err_msg_size <= 0)
+    {
+        return false;
+    }
+
+    va_list args;
+    va_start(args, format);
+    int char_len = vsnprintf(err_msg_out + *err_str_index, *err_msg_size, format, args);
+    va_end(args);
+    if (char_len >= 0 && (Usize)char_len < *err_msg_size)
+    {
+        // successfully wrote string to buffer
+        *err_str_index += (Usize)char_len;
+        *err_msg_size -= (Usize)char_len;
+    }
+    else
+    {
+        // stop print outs after running out of str buffer space
+        *err_msg_size = 0;
+        return false;
+    }
+    return true;
+}
+
+static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, U32 flags, Expr **syntax_tree_out, char *err_msg_out, Usize msg_buf_size)
 {
     Usize state_stack_size = 1024; 
     U32 *state_stack = alloc(U32, state_stack_size);
@@ -1020,6 +1046,8 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
     bool succeded_parsing = false;
 
 
+    Usize err_str_index = 0;
+
     for (Usize index = 0; active;)
     {
         if (index > token_count)
@@ -1045,10 +1073,11 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
                 {
-                    printf("%s, %u\n", op_to_str(op.type), op.arg);
-                    printf("lookahead_ir_index: %lld, state: %u\n", lookahead_lr_index, state_stack[state_count]);
+
+                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
+                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "lookahead_ir_index: %lld, state: %u\n", lookahead_lr_index, state_stack[state_count]);
                 }
-                printf("Unexpected %.*s\n", (int)token_list[index].length, token_list[index].data);
+                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected %.*s token\n", (int)token_list[index].length, token_list[index].data);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1056,7 +1085,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
                 {
-                    printf("%s, %u\n", op_to_str(op.type), op.arg);
+                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
                 assert(symbol_count > 0);
                 symbol_stack[--symbol_count] = lookahead_lr_index;
@@ -1075,7 +1104,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
                 {
-                    printf("%s, %u\n", op_to_str(op.type), op.arg);
+                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
                 assert(op.arg >= 0 && op.arg < table->expr_count);
 
@@ -1119,7 +1148,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                         String cur = get_string_from_lr(table, lr_item);
 
                         // change to better output
-                        printf("Expected %.*s but got %.*s\n", (int)prod.length, prod.data, (int)cur.length, cur.data);
+                        print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Expected %.*s but got %.*s\n", (int)prod.length, prod.data, (int)cur.length, cur.data);
                         active = false;
                         succeded_parsing = false;
                         break;
@@ -1156,7 +1185,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
                 {
-                    printf("ACCEPT\n");
+                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "ACCEPT\n");
                 }
                 active = false;
                 succeded_parsing = true;
@@ -1449,14 +1478,14 @@ ParseTable *create_parse_table_from_bnf(const char *src)
 }
 
 
-bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out)
+bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)
 {
-    return parse_tokens_with_parse_table(token_list, token_count, table, flags, opt_tree_out);
+    return parse_tokens_with_parse_table(token_list, token_count, table, flags, opt_tree_out, opt_error_msg_out, msg_buf_size);
 }
 
-bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out)
+bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)
 {
-    return parse_tokens_with_parse_table(token_list, token_count, (ParseTable *)table, flags, opt_tree_out);
+    return parse_tokens_with_parse_table(token_list, token_count, (ParseTable *)table, flags, opt_tree_out, opt_error_msg_out, msg_buf_size);
 }
 
 void print_table(ParseTable *table)

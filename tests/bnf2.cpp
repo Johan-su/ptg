@@ -45,7 +45,7 @@ static bool parse_str(const char *str, ParseTable *table)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
-   return parse(token_list, token_count, table, 0, nullptr);
+   return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
 }
 
 int main(void)

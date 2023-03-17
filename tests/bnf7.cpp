@@ -227,7 +227,7 @@ static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
-   return parse(token_list, token_count, table, 0, out_tree);
+   return parse(token_list, token_count, table, 0, out_tree, nullptr, 0);
 }
 
 

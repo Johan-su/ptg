@@ -1,6 +1,7 @@
 #include "../src/ptg_internal.hpp"
 #include <assert.h>
 
+#include <string.h>
 
 enum Token
 {
@@ -25,6 +26,8 @@ static const char *bnf_source =
 static ParseToken token_list[128] = {};
 static unsigned int token_count = 0;
 
+static char msg[2048] = {};
+
 static bool parse_str(const char *str, ParseTable *table)
 {
     token_count = 0;
@@ -36,7 +39,9 @@ static bool parse_str(const char *str, ParseTable *table)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0};
 
-   return parse(token_list, token_count, table, 0, nullptr);
+
+    memset(msg, 0, sizeof(msg));
+    return parse(token_list, token_count, table, 0, nullptr, msg, sizeof(msg));
 }
 
 
@@ -49,6 +54,7 @@ int main(void)
     assert(parse_str("", table));
     assert(parse_str("a", table));
     assert(!parse_str("aa", table));
+    printf("%s\n", msg);
     assert(!parse_str("aaa", table));
     assert(!parse_str("aaaa", table));
     assert(!parse_str("aaaa", table));

@@ -49,8 +49,8 @@ PTG_DEFINE void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list
 
 #define PRINT_EVERY_PARSE_STEP (1 << 0)
 
-PTG_DEFINE bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out);
-PTG_DEFINE bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out);
+PTG_DEFINE bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
+PTG_DEFINE bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
 
 PTG_DEFINE U32 get_table_size(ParseTable *table);
 PTG_DEFINE void print_table(ParseTable *table);
