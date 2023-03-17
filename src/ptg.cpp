@@ -1014,7 +1014,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
     Usize table_width = table->LR_items_count;
 
-    TableOperation *table_data = (TableOperation *)((table->data + table->data_size) - sizeof(*table_data) * (table->LR_items_count * table->state_count));
+    TableOperation *table_data = (TableOperation *)((U8 *)table + table->table_start);
 
     bool active = true;
     bool succeded_parsing = false;
@@ -1124,7 +1124,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                     {
                         assert(expr_stack_count < symbol_stack_size);
                         Expr *e = expr_stack[expr_stack_count++];
-                        left_hand_expr->exprs[left_hand_expr->expr_count++] = e;                         
+                        left_hand_expr->exprs[left_hand_expr->expr_count++] = e;
                     }
                 }
                 if (syntax_tree_out != nullptr)
@@ -1143,6 +1143,8 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             {
                 // should never actually happen, as gotos are handled when reducing
                 assert(false);
+                active = false;
+                succeded_parsing = false;
             } break;
             case TableOperationType::ACCEPT:
             {
@@ -1156,9 +1158,9 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
             default:
             {
+                assert(false && "unreachable");
                 active = false;
                 succeded_parsing = false;
-                assert(false && "unreachable");
             }
         }
     }
