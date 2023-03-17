@@ -249,4 +249,5 @@ int main(void)
     assert(parse_str("--1*1", table, &tree));
     assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, nullptr));
     graphviz_from_syntax_tree("./input.dot", tree);
-    printf("Finished %s\n", __FILE__);}
+    printf("Finished %s\n", __FILE__);
+}

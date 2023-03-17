@@ -639,50 +639,54 @@ static void print_parse_table(ParseTable *table)
     // print non_terminals
     {
         U8 *string_data = (U8 *)table + table->string_start;
-        for (Usize i = 0; i < table->string_count; ++i)
+        for (Usize i = 0; i < table->non_terminal_string_count; ++i)
         {
-            StringHeader *header = (StringHeader *)string_data_start;
+            StringHeader *header = (StringHeader *)string_data;
             string_data += sizeof(*header);
 
-            printf(".*%s", (int)header->count, header->chars);
-            string_data += * header->count * sizeof(header->chars[0]);
+            printf("%.*s", (int)header->count, header->chars);
+            string_data += header->count * sizeof(header->chars[0]);
         }
 
     }
 
     // print exprs
     {
+        U8 *expr_data = (U8 *)table + table->expr_start;
+        for (Usize i = 0; i < table->expr_count; ++i)
+        {
+            ParseExpr *expr_header = (ParseExpr *)expr_data;
+            expr_data += sizeof(*expr_header);
+            printf("<%lld> ->", expr_header->non_terminal);
+            for (Usize j = 0; j < expr_header->production_count; ++j)
+            {
+                I64 *prod = (I64 *)expr_data;
+                expr_data += sizeof(*prod);
+                printf(" %lld", *prod);
+            }
+            printf("\n");
+
+        }
 
     }
-    U8 *data = table->data;
-    for (Usize i = 0; i < table->expr_count; ++i)
+
+    // print table
     {
-        ParseExpr *expr_header = (ParseExpr *)data;
-        data = (U8 *)((ParseExpr *)data + 1);
-        printf("<%lld> ->", expr_header->non_terminal);
-        for (Usize j = 0; j < expr_header->production_count; ++j)
+        Usize table_height = table->state_count;
+        Usize table_width = table->LR_items_count;
+        U8 *table_data = (U8 *)table + table->table_start;
+        for (Usize y = 0; y < table_height; ++y)
         {
-            I64 *prod = (I64 *)data;
-            data = (U8 *)((I64 *)data + 1);
-            printf(" %lld", *prod);
+            TableOperation *row = (TableOperation *)table_data;
+            table_data += sizeof(*row) * table_width;
+            for (Usize x = 0; x < table_width; ++x)
+            {
+                TableOperation *op = row + x;
+
+                printf("[%-7s, %u] ", op_to_str(op->type), op->arg);
+            }
+            printf("\n");
         }
-        printf("\n");
-
-    }
-
-    Usize table_height = table->state_count;
-    Usize table_width = table->LR_items_count;
-    for (Usize y = 0; y < table_height; ++y)
-    {
-        TableOperation *row = (TableOperation *)data;
-        data = (U8 *)((TableOperation *)data + table_width);
-        for (Usize x = 0; x < table_width; ++x)
-        {
-            TableOperation *op = row + x;
-
-            printf("[%-7s, %u] ", op_to_str(op->type), op->arg);
-        }
-        printf("\n");
     }
 }
 
@@ -784,10 +788,20 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
 
 ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count)
 {
-    Usize table_size;
-    ParseTable *parse_table;
-    BNFExpression **meta_expr_table;
+    Usize table_size = state_count * lex->LR_items_count;
+    BNFExpression **meta_expr_table = alloc(BNFExpression *, table_size);
+    memset(meta_expr_table, 0, sizeof(*meta_expr_table) * table_size);
+    ParseTable *parse_table;     
     {
+        // get size of strings of the non terminals
+        Usize strings_size = 0;
+        {
+            for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
+            {
+                strings_size += lex->LR_items[i].length * sizeof(char);
+            }
+        }
+
         // get byte size of all productions
         Usize prods_size = 0;
         for (Usize i = 0; i < lex->expr_count; ++i)
@@ -796,54 +810,71 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
             prods_size += sizeof(I64) * expr->prod_count;
         }
 
-        table_size = state_count * lex->LR_items_count;
-        Usize parse_table_size = sizeof(*parse_table) + 
-            sizeof(ParseExpr) * lex->expr_count + prods_size + 
-            sizeof(TableOperation) * table_size;
+        Usize string_size_bytes = sizeof(StringHeader) * (lex->LR_items_count - lex->terminals_count) + strings_size;
+        Usize expr_size_bytes = sizeof(ParseExpr) * lex->expr_count + prods_size;
+        Usize table_size_bytes = sizeof(TableOperation) * table_size;
 
+        Usize parse_table_size = sizeof(*parse_table) + string_size_bytes + expr_size_bytes + table_size_bytes;
         parse_table = (ParseTable *)malloc(parse_table_size);
         memset(parse_table, 0, parse_table_size);
 
 
         parse_table->data_size = (U32)parse_table_size - sizeof(*parse_table);
-        parse_table->state_count = state_count;
-        parse_table->LR_items_count = lex->LR_items_count;
 
+        parse_table->string_start = sizeof(*parse_table);
+        parse_table->non_terminal_string_count = lex->LR_items_count - lex->terminals_count;
+        parse_table->string_header_size = sizeof(StringHeader);
+
+        parse_table->expr_start = parse_table->string_start + (U32)string_size_bytes;
         parse_table->expr_count = lex->expr_count;
         parse_table->expr_header_size = sizeof(ParseExpr);
 
-
-        meta_expr_table = alloc(BNFExpression *, table_size);
-        memset(meta_expr_table, 0, sizeof(*meta_expr_table) * table_size);
+        parse_table->table_start = parse_table->expr_start + (U32)expr_size_bytes;
+        parse_table->state_count = state_count;
+        parse_table->LR_items_count = lex->LR_items_count;
 
     }
 
-
-    U8 *table_entry = parse_table->data;
-
-
-    // add expressions to table
-    for (Usize i = 0; i < lex->expr_count; ++i)
+    // add strings to table
     {
-        BNFExpression *expr = &lex->exprs[i];
-        ParseExpr *header = (ParseExpr *)table_entry;
-        table_entry = (U8 *)((ParseExpr *)table_entry + 1);
-
-        header->non_terminal = get_ir_item_index(lex, expr->non_terminal.data);
-        header->production_count = expr->prod_count;
-
-        for (Usize j = 0; j < expr->prod_count; ++j)
+        U8 *string_data = (U8 *)parse_table + parse_table->string_start;
+        for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
         {
-            I64 *prod = (I64 *)table_entry;
-            table_entry = (U8 *)((I64 *)table_entry + 1);
-
-            I64 lr_index = get_ir_item_index(lex, expr->prod_tokens[j].data);
-            assert(lr_index >= 0);
-            *prod = lr_index;
+            StringHeader *header = (StringHeader *)string_data;
+            header->count = (U32)lex->LR_items[i].length;
+            string_data += sizeof(*header);
+            memcpy(string_data, lex->LR_items[i].data, sizeof(char) * lex->LR_items[i].length);
+            string_data += sizeof(char) * lex->LR_items[i].length;
         }
     }
 
-    TableOperation *table_data = (TableOperation *)table_entry;
+    // add expressions to table
+    {
+        U8 *expr_start = (U8 *)parse_table + parse_table->expr_start;
+        for (Usize i = 0; i < lex->expr_count; ++i)
+        {
+            BNFExpression *expr = &lex->exprs[i];
+            ParseExpr *header = (ParseExpr *)expr_start;
+            expr_start += sizeof(*header);
+
+            header->non_terminal = get_ir_item_index(lex, expr->non_terminal.data);
+            header->production_count = expr->prod_count;
+
+            for (Usize j = 0; j < expr->prod_count; ++j)
+            {
+                I64 *prod = (I64 *)expr_start;
+                expr_start = (U8 *)((I64 *)expr_start + 1);
+
+                I64 lr_index = get_ir_item_index(lex, expr->prod_tokens[j].data);
+                assert(lr_index >= 0);
+                *prod = lr_index;
+            }
+        }
+    }
+
+
+
+    TableOperation *table_data = (TableOperation *)((U8 *)parse_table + parse_table->table_start);
 
     for (Usize i = 0; i < state_count; ++i)
     {
@@ -937,11 +968,26 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
     return parse_table;    
 }
 
-
-
-
-
-
+static String get_string_from_lr(ParseTable *table, I64 lr)
+{
+    String str = {};
+    {
+        U8 *data = (U8 *)table + table->string_start;
+        for (I64 i = table->LR_items_count - table->non_terminal_string_count; i < table->LR_items_count; ++i)
+        {
+            StringHeader *header = (StringHeader *)data;
+            data += sizeof(*header);
+            if (i == lr)
+            {
+                str.data = (char *)data;
+                str.length = header->count;
+                break;
+            }
+            data += header->count;
+        }
+    }
+    return str;
+}
 
 static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, U32 flags, Expr **syntax_tree_out)
 {
@@ -1035,7 +1081,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                 // ParseExpr *current_expr =   &lex->exprs[op.arg];
 
                 // shift to correct expr based on op.arg
-                ParseExpr *current_expr = ((ParseExpr *)table->data);
+                ParseExpr *current_expr = (ParseExpr *)((U8 *)table + table->expr_start);
                 for (Usize i = 0; i < op.arg; ++i)
                 {
                     current_expr = (ParseExpr *)(((I64 *)current_expr) + current_expr->production_count) + 1;
@@ -1051,7 +1097,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                         String non_terminal_str = get_string_from_lr(table, left_hand_side_nonterminal);
                         token.token_type = left_hand_side_nonterminal;
                         token.data = non_terminal_str.data;
-                        token.length = non_terminal_str.length;
+                        token.length = (U32)non_terminal_str.length;
                     }
 
                     left_hand_expr = (Expr *)malloc(sizeof(*left_hand_expr) + sizeof(left_hand_expr->exprs[0]) * current_expr->production_count);
@@ -1117,7 +1163,6 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
         }
     }
 
-    // TODO(Johan): will leak memory if parsing failed
     if (syntax_tree_out != nullptr && succeded_parsing)
     {
         assert(expr_stack_count < symbol_stack_size);
@@ -1345,7 +1390,7 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
 
 
         String ir_str;
-        if (active_expr->token.length == 0)
+        if (false && active_expr->token.length == 0)
         {
             char tmp_buffer[32] = {};
             snprintf(tmp_buffer, sizeof(tmp_buffer), "Tokentype[%lld]", active_expr->token.token_type);

@@ -67,15 +67,16 @@ struct StringHeader
 struct ParseTable
 {
     U32 data_size;
-
+    // relative to ParseTable 
     U32 string_start;
-    U32 string_count;
+    // should be the same as non terminal count
+    U32 non_terminal_string_count;
     U32 string_header_size;
-
-    U32 expr_start;
+    // relative to ParseTable
+    U32 expr_start; 
     U32 expr_count;
     U32 expr_header_size;
-
+    // relative to ParseTable
     U32 table_start;
     U32 state_count;
     U32 LR_items_count;
