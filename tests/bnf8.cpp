@@ -105,6 +105,8 @@ int main(void)
 
     Expr *tree;
 
+
+    assert(!parse_str("()", table, nullptr));
     assert(parse_str("", table, nullptr));
     assert(parse_str("1+1", table, nullptr));
     assert(parse_str("1*1", table, nullptr));

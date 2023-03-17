@@ -1048,6 +1048,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                     printf("%s, %u\n", op_to_str(op.type), op.arg);
                     printf("lookahead_ir_index: %lld, state: %u\n", lookahead_lr_index, state_stack[state_count]);
                 }
+                printf("Unexpected %.*s\n", (int)token_list[index].length, token_list[index].data);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1114,6 +1115,11 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                     
                     if (lr_item != prod_lr)
                     {
+                        String prod = get_string_from_lr(table, prod_lr);
+                        String cur = get_string_from_lr(table, lr_item);
+
+                        // change to better output
+                        printf("Expected %.*s but got %.*s\n", (int)prod.length, prod.data, (int)cur.length, cur.data);
                         active = false;
                         succeded_parsing = false;
                         break;
