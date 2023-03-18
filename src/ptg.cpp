@@ -8,6 +8,10 @@
 // https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
 
 
+// TODO list:
+// TODO: add better error handling when creating parsing table
+// TODO: when parsing, output the amount of chars written  
+// TODO: provide better error handling in general with error codes
 
 
 
