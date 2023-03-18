@@ -119,7 +119,7 @@ int main(void)
     assert(parse_str("-1+1", table, nullptr));
     assert(parse_str("--1*1", table, nullptr));
     assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, &tree));
-    printf("%.*s\n", sizeof(msg), msg);
+    printf("%.*s\n", (int)sizeof(msg), msg);
     graphviz_from_syntax_tree("./build/tests/input.dot", tree);
     free(bnf_source);
     printf("Finished %s\n", __FILE__);
