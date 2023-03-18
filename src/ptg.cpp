@@ -1464,7 +1464,7 @@ U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
         return table_size;
     }
     memcpy(buffer, table, table_size);
-    return table_size;
+    return 0;
 }
 
 ParseTable *create_parse_table_from_bnf(const char *src)
