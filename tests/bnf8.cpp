@@ -51,13 +51,13 @@ static char msg[2048];
 static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
 {
     token_count = 0;
-    U32 index = 0;
+    u32 index = 0;
     for (;str[index] != '\0'; ++index)
     {
         if (is_alpha(str[index])) 
         {
             const char *start = &str[index];
-            U32 count = 1;
+            u32 count = 1;
             while (is_alpha(str[index + count]) || is_number(str[index + count]))
             {
                 count += 1;
@@ -69,7 +69,7 @@ static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
         else if (is_number(str[index]))
         {
             const char *start = &str[index];
-            U32 count = 1;
+            u32 count = 1;
             while (is_number(str[index + count]))
             {
                 count += 1;
@@ -187,11 +187,11 @@ static char *file_to_str(const char *file_path)
         goto end_close;
     }
     {
-        Usize buf_size = (Usize)file_size + 1; 
+        usize buf_size = (usize)file_size + 1; 
         str = alloc(char, buf_size);
         memset(str, 0, sizeof(*str) * buf_size);
     }
-    if (fread(str, sizeof(*str), (Usize)file_size, f) != (Usize)file_size)
+    if (fread(str, sizeof(*str), (usize)file_size, f) != (usize)file_size)
     {
         fprintf(stderr, "ERROR: failed to read data from file %s\n", file_path);
         free(str);
