@@ -6,7 +6,7 @@
 #elif defined(__GNUC__) && defined(BUILD_DLL)
 #define PTG_DEFINE __attribute__((visibility("default"))) extern "C"
 #else
-#define PTG_DEFINE extern "C"
+#define PTG_DEFINE extern
 #endif
 
 #include <stdint.h>
