@@ -12,6 +12,7 @@
 // TODO: add better error handling when creating parsing table
 // TODO: when parsing, output the amount of chars written  
 // TODO: provide better error handling in general with error codes
+// TODO: declare non terminals the way we do tokens right now in bnf source
 
 
 
