@@ -12,16 +12,16 @@
 #include <stdint.h>
 
 typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
+typedef uint16_t U16;
+typedef uint32_t U32;
+typedef uint64_t U64;
 
-typedef size_t usize;
+typedef size_t Usize;
 
 typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
+typedef int16_t I16;
+typedef int32_t I32;
+typedef int64_t I64;
 
 
 
@@ -30,29 +30,29 @@ typedef int64_t i64;
 struct ParseTable;
 struct ParseToken
 {
-    i64 token_type;
+    I64 token_type;
     const char *data;
-    u32 length;
+    U32 length;
 };
 struct Expr
 {
     ParseToken token;
-    u32 expr_count;
+    U32 expr_count;
     Expr *exprs[];
 };
 
 
-PTG_DEFINE u32 write_parse_table_from_bnf(void *buffer, u32 buffer_size, const char *src);
+PTG_DEFINE U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src);
 PTG_DEFINE ParseTable *create_parse_table_from_bnf(const char *src);
 
 PTG_DEFINE void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list);
 
 #define PRINT_EVERY_PARSE_STEP (1 << 0)
 
-PTG_DEFINE bool parse(ParseToken *token_list, u32 token_count, ParseTable *table, u32 flags, Expr **opt_tree_out, char *opt_error_msg_out, usize msg_buf_size);
-PTG_DEFINE bool parse_bin(ParseToken *token_list, u32 token_count, u8 *table, u32 flags, Expr **opt_tree_out, char *opt_error_msg_out, usize msg_buf_size);
+PTG_DEFINE bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
+PTG_DEFINE bool parse_bin(ParseToken *token_list, U32 token_count, u8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
 
-PTG_DEFINE u32 get_table_size(ParseTable *table);
+PTG_DEFINE U32 get_table_size(ParseTable *table);
 PTG_DEFINE void print_table(ParseTable *table);
 
 #endif

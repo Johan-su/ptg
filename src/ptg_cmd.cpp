@@ -44,11 +44,11 @@ static char *file_to_str(const char *file_path)
         goto end_close;
     }
     {
-        usize buf_size = (usize)file_size + 1; 
+        Usize buf_size = (Usize)file_size + 1; 
         str = alloc(char, buf_size);
         memset(str, 0, sizeof(*str) * buf_size);
     }
-    if (fread(str, sizeof(*str), (usize)file_size, f) != (usize)file_size)
+    if (fread(str, sizeof(*str), (Usize)file_size, f) != (Usize)file_size)
     {
         fprintf(stderr, "ERROR: failed to read data from file %s\n", file_path);
         free(str);
@@ -73,7 +73,7 @@ enum class OutputTarget
 };
 
 // if output_path is null, the function will write to stdout
-static int write_output_data_to_target(const void *data, usize data_size, const char *output_path)
+static int write_output_data_to_target(const void *data, Usize data_size, const char *output_path)
 {
     FILE *f = nullptr;
     bool should_close_fd = false;
@@ -144,15 +144,15 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         case OutputTarget::TEXT:
         {
             const char *format = "[%-7s, %u] ";
-            usize block_size = (usize)snprintf(nullptr, 0, format, op_to_str(table_data[0].type), table_data[0].arg);
-            usize data_str_size = block_size * table->LR_items_count * table->state_count + table->state_count * 1;
+            Usize block_size = (Usize)snprintf(nullptr, 0, format, op_to_str(table_data[0].type), table_data[0].arg);
+            Usize data_str_size = block_size * table->LR_items_count * table->state_count + table->state_count * 1;
             char *data_str = alloc(char, data_str_size);
             memset(data_str, 0, data_str_size);
             char *temp_block = alloc(char, block_size + 1); // + 1 for null
 
-            for (usize y = 0; y < table->state_count; ++y)
+            for (Usize y = 0; y < table->state_count; ++y)
             {
-                for (usize x = 0; x < table->LR_items_count; ++x)
+                for (Usize x = 0; x < table->LR_items_count; ++x)
                 {
                     snprintf(temp_block, block_size, format, op_to_str(table_data[x + y * table->LR_items_count].type), table_data[x + y * table->LR_items_count].arg);
                     strcat(data_str, temp_block);
@@ -168,16 +168,16 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         case OutputTarget::C:
         {
             const char *pre = "unsigned char table[] = {";
-            usize pre_len = str_len(pre);
+            Usize pre_len = str_len(pre);
             const char *post = "};\n";
-            usize data_str_size = pre_len + 4 * table->data_size + str_len(post);
+            Usize data_str_size = pre_len + 4 * table->data_size + str_len(post);
             char *data_str = alloc(char, data_str_size);
             memset(data_str, 0, sizeof(*data_str) * data_str_size);
             strcat(data_str, pre);
             char temp_buf[5];
 
             u8 *bin_table = (u8 *)table;
-            for (usize i = 0; i < table->data_size; ++i)
+            for (Usize i = 0; i < table->data_size; ++i)
             {
                 snprintf(temp_buf, sizeof(temp_buf), "%u,", bin_table[i]);
                 strcat(data_str, temp_buf);
@@ -192,14 +192,14 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             char temp_buffer[64] = {};
             unsigned int pre_len = (unsigned int)snprintf(temp_buffer, sizeof(temp_buffer), "const table : [u8; %u] = [", table->data_size);
             const char *post = "];\n";
-            usize data_str_size = pre_len + 4 * table->data_size + str_len(post);
+            Usize data_str_size = pre_len + 4 * table->data_size + str_len(post);
             char *data_str = alloc(char, data_str_size);
             memset(data_str, 0, sizeof(*data_str) * data_str_size);
             strcat(data_str, temp_buffer);
             char temp_buf[5];
 
             u8 *bin_table = (u8 *)table;
-            for (usize i = 0; i < table->data_size; ++i)
+            for (Usize i = 0; i < table->data_size; ++i)
             {
                 snprintf(temp_buf, sizeof(temp_buf), "%u,", bin_table[i]);
                 strcat(data_str, temp_buf);
