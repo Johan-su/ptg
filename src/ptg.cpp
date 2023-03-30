@@ -105,99 +105,111 @@ static BNFToken parse_terminal(const char *src, Usize *cursor)
     return token;
 }
 
-static void add_non_terminal_if_not_already_in_lexer(Lexer *lex, String non_terminal)
+static I64 get_ir_item_index(Lexer *lex, String d)
 {
-    Usize non_terminal_count = lex->LR_items_count - lex->terminals_count;
-    for (Usize i = 0; i < non_terminal_count; ++i)
+    for (I64 i = 0; i < (I64)lex->LR_items_count; ++i)
     {
-        if (is_str(lex->LR_items[i + lex->terminals_count], non_terminal))
+        if (is_str(d, lex->LR_items[i]))
         {
-            return;
+            return i;
         }
     }
-    lex->LR_items[lex->LR_items_count++] = non_terminal;
+    return -1;
 }
-
-
-static void parse_production(Lexer *lex, const char *src, Usize *cursor, BNFExpression *expr)
-{
-    Usize cursor_start = *cursor;
-    Usize prod_count = 0;
-    while (src[*cursor] != ';' && src[*cursor] != '\0')
-    {
-        if (src[*cursor] == '\'')
-        {
-            *cursor += 1;
-            parse_terminal(src, cursor);
-            prod_count += 1;
-            expect(src, cursor, "\'");
-            move_past_whitespace(src, cursor);
-        }
-        else if (src[*cursor] == '<')
-        {
-            *cursor += 1;
-            BNFToken non_terminal = parse_non_terminal_id(src, cursor);
-            prod_count += 1;
-            expect(src, cursor, ">");
-            move_past_whitespace(src, cursor);
-            add_non_terminal_if_not_already_in_lexer(lex, non_terminal.data);
-        }
-        else
-        {
-            assert(false);
-        }
-    }
-
-    expr->prod_tokens = alloc(BNFToken, prod_count);
-
-    *cursor = cursor_start;
-    expr->prod_count = 0;   
-    while (src[*cursor] != ';' && src[*cursor] != '\0')
-    {
-        if (src[*cursor] == '\'')
-        {
-            *cursor += 1;
-            BNFToken terminal = parse_terminal(src, cursor);
-            expr->prod_tokens[expr->prod_count++] = terminal;
-            expect(src, cursor, "\'");
-            move_past_whitespace(src, cursor);
-        }
-        else if (src[*cursor] == '<')
-        {
-            *cursor += 1;
-            BNFToken non_terminal = parse_non_terminal_id(src, cursor);
-            expr->prod_tokens[expr->prod_count++] = non_terminal;
-            expect(src, cursor, ">");
-            move_past_whitespace(src, cursor);
-            //TODO(Johan) is probably redundant
-            add_non_terminal_if_not_already_in_lexer(lex, non_terminal.data);
-        }
-        else
-        {
-            assert(false);
-        }
-
-    }
-}
-
-
-
-
-
 
 
 static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *cursor)
 {
-    BNFExpression expr = {};
     expect(src, cursor, "<");
-    expr.non_terminal = parse_non_terminal_id(src, cursor);
+    BNFToken expr_non_terminal = parse_non_terminal_id(src, cursor);
+    if (get_ir_item_index(lex, expr_non_terminal.data) != -1)
+    {
+        fprintf(stderr, "ERROR: <%.*s> already found, use '|' to define multiple productions for a non terminal\n", (int)expr_non_terminal.data.length, expr_non_terminal.data.data);
+        exit(1);
+    }
+    lex->LR_items[lex->LR_items_count++] = expr_non_terminal.data;
     expect(src, cursor, ">");
     move_past_whitespace(src, cursor);
     expect(src, cursor, ":=");
     move_past_whitespace(src, cursor);
-    parse_production(lex, src, cursor, &expr);
+
+
+
+    while (src[*cursor] != ';' && src[*cursor] != '\0')
+    {
+        BNFExpression expr = {};
+        expr.non_terminal = expr_non_terminal;
+
+        Usize cursor_start = *cursor;
+        Usize prod_count = 0;
+        while (src[*cursor] != ';' && src[*cursor] != '\0')
+        {
+            if (src[*cursor] == '\'')
+            {
+                *cursor += 1;
+                parse_terminal(src, cursor);
+                prod_count += 1;
+                expect(src, cursor, "\'");
+                move_past_whitespace(src, cursor);
+            }
+            else if (src[*cursor] == '<')
+            {
+                *cursor += 1;
+                parse_non_terminal_id(src, cursor);
+                prod_count += 1;
+                expect(src, cursor, ">");
+                move_past_whitespace(src, cursor);
+            }
+            else if (src[*cursor] == '|')
+            {
+                *cursor += 1;
+                move_past_whitespace(src, cursor);
+                break;
+            }
+            else
+            {
+                fprintf(stderr, "ERROR: unexpected %c in bnf\n", src[*cursor]);
+                exit(1);
+            }
+        }
+
+        expr.prod_tokens = alloc(BNFToken, prod_count);
+
+        *cursor = cursor_start;
+        expr.prod_count = 0;   
+        while (src[*cursor] != ';' && src[*cursor] != '\0')
+        {
+            if (src[*cursor] == '\'')
+            {
+                *cursor += 1;
+                BNFToken terminal = parse_terminal(src, cursor);
+                expr.prod_tokens[expr.prod_count++] = terminal;
+                expect(src, cursor, "\'");
+                move_past_whitespace(src, cursor);
+            }
+            else if (src[*cursor] == '<')
+            {
+                *cursor += 1;
+                BNFToken non_terminal = parse_non_terminal_id(src, cursor);
+                expr.prod_tokens[expr.prod_count++] = non_terminal;
+                expect(src, cursor, ">");
+                move_past_whitespace(src, cursor);
+            }
+            else if(src[*cursor] == '|')
+            {
+                *cursor += 1;
+                move_past_whitespace(src, cursor);
+                break;
+            }
+            else
+            {
+                assert(false);
+            }
+
+        }
+        lex->exprs[lex->expr_count++] = expr;
+    }
     move_past_whitespace(src, cursor);
-    lex->exprs[lex->expr_count++] = expr;
 }
 
 
@@ -340,18 +352,7 @@ static void print_state(State *state)
 
 
 
-static I64 get_ir_item_index(Lexer *lex, String d)
-{
-    for (I64 i = 0; i < (I64)lex->LR_items_count; ++i)
-    {
-        if (is_str(d, lex->LR_items[i]))
-        {
-            return i;
-        }
-    }
-    if (is_str(d, make_string("S"))) return -10;
-    return -1;
-}
+
 
 
 static bool is_expr_already_expanded(State *state, BNFExpression *expr)

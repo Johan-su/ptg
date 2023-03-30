@@ -17,8 +17,7 @@ const char *bnf_source =
     ":"
     "BNF"
     "<S> := <E>;"
-    "<E> := 'a';"
-    "<E> := <E>'t';"
+    "<E> := 'a' | <E>'t';"
     ":";
 
 
