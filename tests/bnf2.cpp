@@ -55,7 +55,5 @@ int main(void)
     assert(!parse_str("", table));
     assert(parse_str("a", table));
     assert(parse_str("b", table));
-    printf("Finished %s\n", __FILE__);}
-
-
-
+    printf("Finished %s\n", __FILE__);
+}

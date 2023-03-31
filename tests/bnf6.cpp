@@ -67,4 +67,5 @@ int main(void)
     assert(parse_str("I+I", table));
     assert(parse_str("I+I+I+I+I+I", table));
     assert(!parse_str("I+I+I+I+I+", table));
-    printf("Finished %s\n", __FILE__);}
+    printf("Finished %s\n", __FILE__);
+}

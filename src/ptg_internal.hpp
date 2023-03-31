@@ -55,25 +55,26 @@ struct ParseExpr
 {
     I64 non_terminal;
     U32 production_count;
-    I64 prods[];
+    // relative to ParseTable
+    U32 prod_start;
 };
 
 struct StringHeader
 {
     U32 count;
-    U8 chars[];
+    // relative to ParseTable
+    U32 str_start;
 };
 
 struct ParseTable
 {
     U32 data_size;
     // relative to ParseTable 
-    U32 string_start;
-    // should be the same as non terminal count
-    U32 non_terminal_string_count;
+    U32 string_header_start;
+    U32 string_header_count; // should be the same as non terminal count
     U32 string_header_size;
     // relative to ParseTable
-    U32 expr_start; 
+    U32 expr_header_start; 
     U32 expr_count;
     U32 expr_header_size;
     // relative to ParseTable

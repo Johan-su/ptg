@@ -62,4 +62,5 @@ int main(void)
     assert(!parse_str("312321", table));
     assert(!parse_str("23123", table));
     assert(!parse_str("asfasd", table));
-    printf("Finished %s\n", __FILE__);}
+    printf("Finished %s\n", __FILE__);
+}

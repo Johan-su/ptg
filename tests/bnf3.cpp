@@ -82,4 +82,5 @@ int main(void)
     assert(parse_str("+", table));
     assert(!parse_str("00", table));
     assert(!parse_str("5120412505721057214901279+4", table));
-    printf("Finished %s\n", __FILE__);}
+    printf("Finished %s\n", __FILE__);
+}
