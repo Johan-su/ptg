@@ -1,5 +1,4 @@
 #include "../src/ptg_internal.hpp"
-#include <assert.h>
 
 #include <string.h>
 
@@ -17,8 +16,7 @@ static const char *bnf_source =
     ":"
     "BNF"
     "<S> := <E>;"
-    "<E> := ;"
-    "<E> := 'a';"
+    "<E> := 'a' | ;"
     ":";
 
 
@@ -50,6 +48,8 @@ static bool parse_str(const char *str, ParseTable *table)
 int main(void)
 {
     ParseTable *table = create_parse_table_from_bnf(bnf_source);
+
+    // print_table(table);
 
     assert(parse_str("", table));
     assert(parse_str("a", table));

@@ -1,5 +1,4 @@
 #include "../src/ptg_internal.hpp"
-#include <assert.h>
 
 enum Token
 {
@@ -38,8 +37,7 @@ static const char *bnf_source =
     "BNF"
     "<S> := <E>;"
     "<E> := <E>'+'<E> | "
-         /*"'0' | '1' | '2' |'3' |'4' | '5' | '6' | '7' | '8' | '9' |;"*/
-         "'0'|;"
+         "'0' | '1' | '2' |'3' |'4' | '5' | '6' | '7' | '8' | '9' | ;"
     ":";
 
 

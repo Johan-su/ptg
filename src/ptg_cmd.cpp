@@ -176,7 +176,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             strcat(data_str, pre);
             char temp_buf[5];
 
-            u8 *bin_table = (u8 *)table;
+            U8 *bin_table = (U8 *)table;
             for (Usize i = 0; i < table->data_size; ++i)
             {
                 snprintf(temp_buf, sizeof(temp_buf), "%u,", bin_table[i]);
@@ -190,7 +190,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
         case OutputTarget::RUST:
         {
             char temp_buffer[64] = {};
-            unsigned int pre_len = (unsigned int)snprintf(temp_buffer, sizeof(temp_buffer), "const table : [u8; %u] = [", table->data_size);
+            unsigned int pre_len = (unsigned int)snprintf(temp_buffer, sizeof(temp_buffer), "const table : [U8; %u] = [", table->data_size);
             const char *post = "];\n";
             Usize data_str_size = pre_len + 4 * table->data_size + str_len(post);
             char *data_str = alloc(char, data_str_size);
@@ -198,7 +198,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             strcat(data_str, temp_buffer);
             char temp_buf[5];
 
-            u8 *bin_table = (u8 *)table;
+            U8 *bin_table = (U8 *)table;
             for (Usize i = 0; i < table->data_size; ++i)
             {
                 snprintf(temp_buf, sizeof(temp_buf), "%u,", bin_table[i]);

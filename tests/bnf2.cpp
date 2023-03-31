@@ -1,5 +1,4 @@
 #include "../src/ptg_internal.hpp"
-#include <assert.h>
 
 
 enum Token

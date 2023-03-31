@@ -29,16 +29,16 @@ static inline void *debug_malloc(size_t size, const char *file, int line)
 }
 
 // #define malloc(size) debug_malloc(size, __FILE__, __LINE__)
-#define alloc(type, amount) (type *)malloc(sizeof(type) * amount)
+#define alloc(type, amount) (type *)malloc(sizeof(type) * (amount))
 
-typedef uint8_t u8;
+typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
 typedef uint64_t U64;
 
 typedef size_t Usize;
 
-typedef int8_t i8;
+typedef int8_t I8;
 typedef int16_t I16;
 typedef int32_t I32;
 typedef int64_t I64;
@@ -61,7 +61,7 @@ struct ParseExpr
 struct StringHeader
 {
     U32 count;
-    u8 chars[];
+    U8 chars[];
 };
 
 struct ParseTable
@@ -81,7 +81,7 @@ struct ParseTable
     U32 state_count;
     U32 LR_items_count;
     
-    u8 data[];
+    U8 data[];
 };
 
 enum class TokenType
@@ -201,3 +201,5 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
 void parse_bnf_src(Lexer *lex, const char *src);
 void create_all_substates(State *state_list, U32 *state_count, Lexer *lex);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
+
+void fprint_state(FILE *stream, State *state);

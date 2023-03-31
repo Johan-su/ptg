@@ -1,5 +1,4 @@
 #include "../src/ptg_internal.hpp"
-#include <assert.h>
 
 enum Token
 {
@@ -18,8 +17,7 @@ static const char *bnf_source =
     ":"
     "BNF"
     "<S> := <E>;"
-    "<E> := <T>'+'<E>;"
-    "<E> := <T>;"
+    "<E> := <T>'+'<E> | <T>;"
     "<T> := 'I';"
     ":";
 
@@ -44,7 +42,24 @@ static bool parse_str(const char *str, ParseTable *table)
 
 int main(void)
 {
-    ParseTable *table = create_parse_table_from_bnf(bnf_source);
+
+    ParseTable *table;
+    {
+        Lexer *lex = alloc(Lexer, 1);
+        parse_bnf_src(lex, bnf_source);
+        State *state_list = alloc(State, 1024);
+        U32 state_count;
+        create_all_substates(state_list, &state_count, lex);
+        // for (Usize i = 0; i < state_count; ++i)
+        // {
+        //     printf("STATE %llu ------\n", i);
+        //     fprint_state(stdout, &state_list[i]);
+        // 
+        table = create_parse_table_from_states(lex, state_list, state_count); 
+
+        free(lex);
+        free(state_list);
+    }
 
     // print_table(table);
 

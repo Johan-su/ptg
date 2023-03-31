@@ -11,14 +11,14 @@
 
 #include <stdint.h>
 
-typedef uint8_t u8;
+typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
 typedef uint64_t U64;
 
 typedef size_t Usize;
 
-typedef int8_t i8;
+typedef int8_t I8;
 typedef int16_t I16;
 typedef int32_t I32;
 typedef int64_t I64;
@@ -50,7 +50,7 @@ PTG_DEFINE void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list
 #define PRINT_EVERY_PARSE_STEP (1 << 0)
 
 PTG_DEFINE bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
-PTG_DEFINE bool parse_bin(ParseToken *token_list, U32 token_count, u8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
+PTG_DEFINE bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
 
 PTG_DEFINE U32 get_table_size(ParseTable *table);
 PTG_DEFINE void print_table(ParseTable *table);
