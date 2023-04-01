@@ -51,16 +51,16 @@ int main(void)
 
     // print_table(table);
 
-    assert(parse_str("", table));
-    assert(parse_str("a", table));
-    assert(!parse_str("aa", table));
+    assert_always(parse_str("", table));
+    assert_always(parse_str("a", table));
+    assert_always(!parse_str("aa", table));
     printf("%s\n", msg);
-    assert(!parse_str("aaa", table));
-    assert(!parse_str("aaaa", table));
-    assert(!parse_str("aaaa", table));
-    assert(!parse_str("aaaa", table));
-    assert(!parse_str("312321", table));
-    assert(!parse_str("23123", table));
-    assert(!parse_str("asfasd", table));
+    assert_always(!parse_str("aaa", table));
+    assert_always(!parse_str("aaaa", table));
+    assert_always(!parse_str("aaaa", table));
+    assert_always(!parse_str("aaaa", table));
+    assert_always(!parse_str("312321", table));
+    assert_always(!parse_str("23123", table));
+    assert_always(!parse_str("asfasd", table));
     printf("Finished %s\n", __FILE__);
 }

@@ -45,9 +45,9 @@ int main(void)
 
     ParseTable *table;
     {
-        Lexer *lex = alloc(Lexer, 1);
+        Lexer *lex = alloc_zero(Lexer, 1);
         parse_bnf_src(lex, bnf_source);
-        State *state_list = alloc(State, 1024);
+        State *state_list = alloc_zero(State, 1024);
         U32 state_count;
         create_all_substates(state_list, &state_count, lex);
         // for (Usize i = 0; i < state_count; ++i)
@@ -61,11 +61,11 @@ int main(void)
         free(state_list);
     }
 
-    // print_table(table);
+    print_table(table);
 
-    assert(!parse_str("", table));
-    assert(parse_str("I+I", table));
-    assert(parse_str("I+I+I+I+I+I", table));
-    assert(!parse_str("I+I+I+I+I+", table));
+    assert_always(!parse_str("", table));
+    assert_always(parse_str("I+I", table));
+    assert_always(parse_str("I+I+I+I+I+I", table));
+    assert_always(!parse_str("I+I+I+I+I+", table));
     printf("Finished %s\n", __FILE__);
 }

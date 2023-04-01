@@ -50,10 +50,10 @@ int main(void)
 {
     ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
-    assert(parse_str("a+", table));
-    assert(parse_str("b+", table));
-    assert(!parse_str("", table));
-    assert(parse_str("a", table));
-    assert(parse_str("b", table));
+    assert_always(parse_str("a+", table));
+    assert_always(parse_str("b+", table));
+    assert_always(!parse_str("", table));
+    assert_always(parse_str("a", table));
+    assert_always(parse_str("b", table));
     printf("Finished %s\n", __FILE__);
 }

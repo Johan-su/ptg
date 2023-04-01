@@ -4,19 +4,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef _DEBUG
-#define assert(condition)                                                                         \
-do                                                                                                \
-{                                                                                                 \
-    if (!(condition))                                                                             \
-    {                                                                                             \
+
+#define assert_always(condition)                                                                    \
+do                                                                                                  \
+{                                                                                                   \
+    if (!(condition))                                                                               \
+    {                                                                                               \
         fprintf(stderr, "ERROR: assertion failed [%s] at %s:%d\n", #condition, __FILE__, __LINE__); \
-        __debugbreak();                                                                           \
-    }                                                                                             \
+        __debugbreak();                                                                             \
+        exit(1);                                                                                    \
+    }                                                                                               \
 } while (0)
+
+
+
+#ifdef _DEBUG
+#define assert_debug(condition) assert_always(condition)
 #else
-#define assert(condition)
+#define assert_debug(condition)
 #endif
+
+
 
 
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
@@ -28,8 +36,17 @@ static inline void *debug_malloc(size_t size, const char *file, int line)
     return malloc(size);
 }
 
+static inline void *debug_calloc(size_t amount, size_t size, const char *file, int line)
+{
+    fprintf(stderr, "allocated %llu bytes, at %s:%d\n", size, file, line);
+    return calloc(amount, size);
+}
+
+
 // #define malloc(size) debug_malloc(size, __FILE__, __LINE__)
+// #define calloc(size) debug_calloc((amount), size, __FILE__, __LINE__)
 #define alloc(type, amount) (type *)malloc(sizeof(type) * (amount))
+#define alloc_zero(type, amount) (type *)calloc((amount), sizeof(type))
 
 typedef uint8_t U8;
 typedef uint16_t U16;
@@ -68,7 +85,7 @@ struct StringHeader
 
 struct ParseTable
 {
-    U32 data_size;
+    U32 size_in_bytes;
     // relative to ParseTable 
     U32 string_header_start;
     U32 string_header_count; // should be the same as non terminal count
@@ -176,8 +193,8 @@ static bool is_str(String s0, String s1)
     for (Usize k = 0; k < s0.length; ++k)
     {
         if (s0.data[k] != s1.data[k]) return false;
-        assert(s0.data[k] != '\0');
-        assert(s1.data[k] != '\0');
+        if (s0.data[k] == '\0') return false;
+        if (s1.data[k] == '\0') return false;
     }
     return true;
 }
@@ -193,7 +210,7 @@ static const char *op_to_str(TableOperationType op)
         case TableOperationType::GOTO: return "GOTO";
         case TableOperationType::ACCEPT: return "ACCEPT";
 
-        default: assert(false);
+        default: assert_always(false);
     }
     return nullptr;
 }

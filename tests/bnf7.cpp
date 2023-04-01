@@ -225,14 +225,14 @@ int main(void)
 
     Expr *tree;
 
-    assert(parse_str("", table, nullptr));
-    assert(parse_str("1+1", table, nullptr));
-    assert(parse_str("1*1", table, nullptr));
-    assert(parse_str("1/1", table, nullptr));
-    assert(parse_str("1-1", table, nullptr));
-    assert(parse_str("-1+1", table, nullptr));
-    assert(parse_str("--1*1", table, &tree));
-    assert(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, nullptr));
+    assert_always(parse_str("", table, nullptr));
+    assert_always(parse_str("1+1", table, nullptr));
+    assert_always(parse_str("1*1", table, nullptr));
+    assert_always(parse_str("1/1", table, nullptr));
+    assert_always(parse_str("1-1", table, nullptr));
+    assert_always(parse_str("-1+1", table, nullptr));
+    assert_always(parse_str("--1*1", table, &tree));
+    assert_always(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, nullptr));
     graphviz_from_syntax_tree("./input.dot", tree);
     printf("Finished %s\n", __FILE__);
 }

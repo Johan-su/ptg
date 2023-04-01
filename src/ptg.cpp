@@ -72,12 +72,12 @@ static BNFToken parse_non_terminal_id(const char *src, Usize *cursor)
 
     while (src[*cursor] != '>')
     {
-        assert(src[*cursor] != '\0');
+        assert_debug(src[*cursor] != '\0');
         *cursor += 1;
         id.length += 1;
     }
 
-    assert(id.length > 0);
+    assert_debug(id.length > 0);
     BNFToken token = {};
     token.data = id;
     token.type = TokenType::NONTERMINAL;
@@ -93,7 +93,7 @@ static BNFToken parse_terminal(const char *src, Usize *cursor)
 
     while (src[*cursor] != '\'')
     {
-        assert(src[*cursor] != '\0');
+        assert_debug(src[*cursor] != '\0');
         *cursor += 1;
         id.length += 1;
     }
@@ -217,7 +217,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
             }
             else
             {
-                assert(false);
+                assert_always(false);
             }
 
         }
@@ -264,7 +264,7 @@ static void fprint_BNF(FILE *stream, BNFExpression *expr)
             }
             else
             {
-                assert(false);
+                assert_always(false);
             }
         }
     }
@@ -319,8 +319,8 @@ static bool is_BNFExpression_ignore_dot_lookahead(const BNFExpression *b0, const
 
 static bool is_state(State *s0, State *s1)
 {
-    assert(s0->expr_count <= 512);
-    assert(s1->expr_count <= 512);
+    assert_always(s0->expr_count <= 512);
+    assert_always(s1->expr_count <= 512);
     if (s0->expr_count != s1->expr_count) return false;
 
 
@@ -393,12 +393,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, Lexe
 {
     for (Usize k = 0; k < state->expr_count; ++k)
     {
-        if (!(state->expr_count < ARRAY_COUNT(state->exprs)))
-        {
-            print_state(state);
-            assert(false);
-        }
-        assert(state->expr_count < ARRAY_COUNT(state->exprs));
+        assert_always(state->expr_count < ARRAY_COUNT(state->exprs));
         BNFExpression *rule_expand_expr = &state->exprs[k];
 
         if (rule_expand_expr->dot >= rule_expand_expr->prod_count) continue;
@@ -412,7 +407,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, Lexe
         if (rule_expand_expr->dot + 1 < rule_expand_expr->prod_count)
         {
             I64 lr_index = get_ir_item_index(lex, rule_expand_expr->prod_tokens[rule_expand_expr->dot + 1].data);
-            assert(lr_index != -1);
+            assert_always(lr_index != -1);
 
             for (Usize i = 0; i < lex->expr_count; ++i)
             {
@@ -482,7 +477,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, Lexe
         }
         else
         {
-            assert(rule_expand_expr->look_ahead.type != TokenType::INVALID);
+            assert_always(rule_expand_expr->look_ahead.type != TokenType::INVALID);
             for (Usize i = 0; i < lex->expr_count; ++i)
             {
                 if (!is_str(lex->exprs[i].non_terminal.data, rule_to_expand.data)) continue;
@@ -499,7 +494,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, Lexe
 
         Usize dot = 0;
         rule_expand_expr = &state->exprs[k];
-        assert(state->exprs[k].prod_count > 0);
+        assert_always(state->exprs[k].prod_count > 0);
         rule_to_expand = state->exprs[k].prod_tokens[dot];
     }
 }
@@ -509,14 +504,8 @@ static State g_active_substate = {};
 
 static void create_substates_from_state(State *state, State *state_list, U32 *state_list_count, Lexer *lex)
 {
-    if (!(state->expr_count < ARRAY_COUNT(state->exprs)))
-    {
-        print_state(state);
-        assert(false);
-    }
-    assert(state->expr_count < ARRAY_COUNT(state->exprs));
-    bool *check_list = alloc(bool, state->expr_count);
-    memset(check_list, 0, sizeof(*check_list) * state->expr_count);
+    assert_always(state->expr_count < ARRAY_COUNT(state->exprs));
+    bool *check_list = alloc_zero(bool, state->expr_count);
 
     for (Usize i = 0; i < state->expr_count; ++i)
     {
@@ -645,7 +634,7 @@ void graph_from_state_list(FILE *f, State *state_list, Usize state_count)
             }
             else
             {
-                assert(false);
+                assert_always(false);
             }
 
             continue_outer:;
@@ -672,7 +661,7 @@ static void print_parse_table(ParseTable *table)
         for (Usize i = 0; i < table->string_header_count; ++i)
         {
             StringHeader *header = &string_data[i];
-            printf("%.*s", (int)header->count, table_bin + header->str_start);
+            printf("<%.*s>\n", (int)header->count, table_bin + header->str_start);
         }
     }
 
@@ -716,10 +705,10 @@ static void print_parse_table(ParseTable *table)
 static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_expr_table, Usize table_size,
     BNFExpression *expr, I64 look_ahead_index, Usize state_id, TableOperation op)
 {
-    assert(look_ahead_index != -1);
+    assert_always(look_ahead_index != -1);
 
     Usize index = (Usize)look_ahead_index + state_id * lex->LR_items_count;
-    assert(index < table_size);(void)table_size;
+    assert_always(index < table_size);(void)table_size;
     switch (table[index].type)
     {
         case TableOperationType::INVALID:
@@ -795,128 +784,140 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
         } break;
         case TableOperationType::GOTO:
         {
-            assert(false);
+            assert_always(false);
         } break;
         case TableOperationType::ACCEPT:
         {
-            {
-                Usize table_height = table_size / lex->LR_items_count;
-                Usize table_width = lex->LR_items_count;
-                for (Usize y = 0; y < table_height; ++y)
-                {
-                    TableOperation *row = table + y *table_width;
-                    for (Usize x = 0; x < table_width; ++x)
-                    {
-                        TableOperation *p_op = row + x;
-
-                        printf("[%-7s, %u] ", op_to_str(p_op->type), p_op->arg);
-                    }
-                    printf("\n");
-                }
-            }
-            assert(false);
+            assert_always(false);
         } break;
-        default: assert(false && "Unreachable");     
+        default: assert_always(false && "Unreachable");     
     }
 }
 
-
+#define PADDING_FOR_ALIGNMENT(ptr, type) ((alignof(type) - ((ptr) % alignof(type))) % alignof(type))
 
 ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count)
 {
     Usize table_size = state_count * lex->LR_items_count;
-    BNFExpression **meta_expr_table = alloc(BNFExpression *, table_size);
-    memset(meta_expr_table, 0, sizeof(*meta_expr_table) * table_size);
-    ParseTable *parse_table;     
+    BNFExpression **meta_expr_table = alloc_zero(BNFExpression *, table_size);
+    ParseTable *parse_table = nullptr;  
+
+
+    Usize string_headers_size_bytes = sizeof(StringHeader) * (lex->LR_items_count - lex->terminals_count);
+    // get size of strings of the non terminals
+    Usize strings_size_bytes = 0;
     {
-
-
-        Usize string_headers_size_bytes = sizeof(StringHeader) * (lex->LR_items_count - lex->terminals_count);
-        // get size of strings of the non terminals
-        Usize strings_size_bytes = 0;
-        {
-            for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
-            {
-                strings_size += lex->LR_items[i].length * sizeof(char);
-            }
-        }
-        Usize expr_headers_size_bytes = sizeof(ParseExpr) * lex->expr_count;
-        // get byte size of all productions
-        Usize prods_size_bytes = 0;
-        for (Usize i = 0; i < lex->expr_count; ++i)
-        {
-            BNFExpression *expr = &lex->exprs[i];
-            prods_size += sizeof(I64) * expr->prod_count;
-        }
-        Usize table_size_bytes = sizeof(TableOperation) * table_size;
-
-        Usize table_to_string_header_padding = sizeof(*parse_table) % alignof(StringHeader);
-        Usize string_header_to_expr_header_padding = string_headers_size_bytes % alignof(ParseExpr);
-        Usize expr_header_to_table_padding = sizeof(ParseExpr) % alignof(TableOperation);
-        Usize table_to_str_padding = sizeof(TableOperation) % sizeof(char);
-        Usize str_to_expr_padding = sizeof(char) % 
-
-        Usize parse_table_size = sizeof(*parse_table) + string_headers_size_bytes + expr_headers_size_bytes + table_size_bytes;
-        parse_table = (ParseTable *)malloc(parse_table_size);
-        memset(parse_table, 0, parse_table_size);
-
-
-        parse_table->data_size = (U32)parse_table_size - sizeof(*parse_table);
-
-        parse_table->string_start = sizeof(*parse_table);
-        parse_table->non_terminal_string_count = lex->LR_items_count - lex->terminals_count;
-        parse_table->string_header_size = sizeof(StringHeader);
-
-        parse_table->expr_start = parse_table->string_start + (U32)string_size_bytes;
-        parse_table->expr_count = lex->expr_count;
-        parse_table->expr_header_size = sizeof(ParseExpr);
-
-        parse_table->table_start = parse_table->expr_start + (U32)expr_size_bytes;
-        parse_table->state_count = state_count;
-        parse_table->LR_items_count = lex->LR_items_count;
-
-    }
-
-    // add strings to table
-    {
-        U8 *string_data = (U8 *)parse_table + parse_table->string_start;
         for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
         {
-            StringHeader *header = (StringHeader *)string_data;
+            strings_size_bytes += lex->LR_items[i].length * sizeof(char);
+        }
+    }
+    Usize expr_headers_size_bytes = sizeof(ParseExpr) * lex->expr_count;
+    // get byte size of all productions
+    Usize prods_size_bytes = 0;
+    for (Usize i = 0; i < lex->expr_count; ++i)
+    {
+        BNFExpression *expr = &lex->exprs[i];
+        prods_size_bytes += sizeof(I64) * expr->prod_count;
+    }
+    Usize table_size_bytes = sizeof(TableOperation) * table_size;
+
+
+    Usize parse_table_size = 0;
+    parse_table_size += sizeof(*parse_table);
+    Usize table_to_string_header_padding = PADDING_FOR_ALIGNMENT(parse_table_size, StringHeader);
+    parse_table_size += table_to_string_header_padding;
+    parse_table_size += string_headers_size_bytes;
+    Usize string_header_to_expr_header_padding = PADDING_FOR_ALIGNMENT(parse_table_size, ParseExpr);
+    parse_table_size += string_header_to_expr_header_padding;
+    parse_table_size += expr_headers_size_bytes;
+    Usize expr_header_to_table_padding = PADDING_FOR_ALIGNMENT(parse_table_size, TableOperation);
+    parse_table_size += expr_header_to_table_padding;
+    parse_table_size += table_size_bytes;
+    Usize table_to_str_padding = PADDING_FOR_ALIGNMENT(parse_table_size, char);
+    parse_table_size += table_to_str_padding;
+    parse_table_size += strings_size_bytes;
+    Usize str_to_prods_padding = PADDING_FOR_ALIGNMENT(parse_table_size, I64);
+    parse_table_size += str_to_prods_padding;
+    parse_table_size += prods_size_bytes;
+
+    parse_table = (ParseTable *)malloc(parse_table_size);
+    memset(parse_table, 0, parse_table_size);
+
+
+
+    parse_table->size_in_bytes = (U32)parse_table_size;
+    // relative to ParseTable 
+    parse_table->string_header_start = (U32)(sizeof(*parse_table) + table_to_string_header_padding);
+    parse_table->string_header_count = lex->LR_items_count - lex->terminals_count; // should be the same as non terminal count
+    parse_table->string_header_size = sizeof(StringHeader);
+    // relative to ParseTable
+    parse_table->expr_header_start = (U32)(parse_table->string_header_start + sizeof(StringHeader) * parse_table->string_header_count + string_header_to_expr_header_padding); 
+    parse_table->expr_count = lex->expr_count;
+    parse_table->expr_header_size = sizeof(ParseExpr);
+    // relative to ParseTable
+    parse_table->table_start = (U32)(parse_table->expr_header_start + sizeof(ParseExpr) * parse_table->expr_count + expr_header_to_table_padding);
+    parse_table->state_count = state_count;
+    parse_table->LR_items_count = lex->LR_items_count;
+
+
+
+    U8 *const parse_bin = (U8 *)parse_table;
+
+    assert_always((Usize)(parse_bin + parse_table->string_header_start) % alignof(StringHeader) == 0);
+    assert_always((Usize)(parse_bin + parse_table->expr_header_start) % alignof(ParseExpr) == 0);
+    assert_always((Usize)(parse_bin + parse_table->table_start) % alignof(TableOperation) == 0);
+
+    // add strings to table
+    U8 *string_start = parse_bin + parse_table->table_start + table_size_bytes + table_to_str_padding;
+    {
+        StringHeader *header_data = (StringHeader *)(parse_bin + parse_table->string_header_start);
+        U8 *string_data = string_start;
+        // start at end of terminals, (start of non_terminals)
+        for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
+        {
+            StringHeader *header = header_data;
             header->count = (U32)lex->LR_items[i].length;
-            string_data += sizeof(*header);
+            header->str_start = (U32)(string_data - parse_bin);
+            header_data += 1;
             memcpy(string_data, lex->LR_items[i].data, sizeof(char) * lex->LR_items[i].length);
             string_data += sizeof(char) * lex->LR_items[i].length;
         }
+        assert_always(string_data == string_start + strings_size_bytes);
     }
 
     // add expressions to table
+    U8 *prod_start = string_start + strings_size_bytes + str_to_prods_padding;
     {
-        U8 *expr_start = (U8 *)parse_table + parse_table->expr_start;
+        ParseExpr *header_data = (ParseExpr *)(parse_bin + parse_table->expr_header_start);
+        I64 *prod_data = (I64 *)(prod_start);
+
+
         for (Usize i = 0; i < lex->expr_count; ++i)
         {
             BNFExpression *expr = &lex->exprs[i];
-            ParseExpr *header = (ParseExpr *)expr_start;
-            expr_start += sizeof(*header);
-
-            header->non_terminal = get_ir_item_index(lex, expr->non_terminal.data);
+            ParseExpr *header = header_data;
+            header->non_terminal = get_ir_item_index(lex, expr->non_terminal.data); // -1 in this case represents <S> if no errors
             header->production_count = expr->prod_count;
+            header->prod_start = (U32)((U8 *)prod_data - parse_bin);
+            header_data += 1;
 
             for (Usize j = 0; j < expr->prod_count; ++j)
             {
-                I64 *prod = (I64 *)expr_start;
-                expr_start = (U8 *)((I64 *)expr_start + 1);
-
-                I64 lr_index = get_ir_item_index(lex, expr->prod_tokens[j].data);
-                assert(lr_index != -1);
-                *prod = lr_index;
+                I64 *prod = prod_data;
+                I64 index = get_ir_item_index(lex, expr->prod_tokens[j].data);
+                assert_always(index != -1);
+                *prod = index;
+                prod_data += 1;
             }
         }
-    }
+        assert_always((U8 *)prod_data == prod_start + prods_size_bytes);
+
+   }
 
 
 
-    TableOperation *table_data = (TableOperation *)((U8 *)parse_table + parse_table->table_start);
+    TableOperation *table_data = (TableOperation *)(parse_bin + parse_table->table_start);
 
     for (Usize i = 0; i < state_count; ++i)
     {
@@ -964,7 +965,7 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
             }
             else
             {
-                assert(false);
+                assert_always(false);
             }
 
         }
@@ -997,7 +998,7 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
                             break;
                         }
                     }
-                    assert(index != -1);
+                    assert_always(index != -1);
                 }
 
                 op.arg = (U32)index;
@@ -1005,28 +1006,24 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
                 table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
         }        
-    }    
+    }
 
-    return parse_table;    
+    return parse_table;
 }
 
 static String get_string_from_lr(ParseTable *table, I64 lr)
 {
+    //TODO(Johan): check if this is also used for terminals and not only non_terminals
+    assert_always(lr >= 0 && lr < table->LR_items_count);
+
+    U8 *parse_bin = (U8 *)table;
+
     String str = {};
     {
-        U8 *data = (U8 *)table + table->string_start;
-        for (I64 i = table->LR_items_count - table->non_terminal_string_count; i < table->LR_items_count; ++i)
-        {
-            StringHeader *header = (StringHeader *)data;
-            data += sizeof(*header);
-            if (i == lr)
-            {
-                str.data = (char *)data;
-                str.length = header->count;
-                break;
-            }
-            data += header->count;
-        }
+        StringHeader *header_data = (StringHeader *)(parse_bin + table->string_header_start);
+
+        str.data = (char *)(parse_bin + header_data[lr].str_start);
+        str.length = header_data[lr].count;
     }
     return str;
 }
@@ -1129,7 +1126,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                 {
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
-                assert(symbol_count > 0);
+                assert_debug(symbol_count > 0);
                 symbol_stack[--symbol_count] = lookahead_lr_index;
                 state_stack[--state_count] = op.arg;
                 if (syntax_tree_out != nullptr)
@@ -1137,7 +1134,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                     Expr *expr = alloc(Expr, 1);
                     expr->expr_count = 0;
                     expr->token = token_list[index];
-                    assert(expr_stack_count > 0);
+                    assert_debug(expr_stack_count > 0);
                     expr_stack[--expr_stack_count] = expr;
                 }
                 index += 1;
@@ -1148,19 +1145,15 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                 {
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
-                assert(op.arg >= 0 && op.arg < table->expr_count);
+                assert_debug(op.arg >= 0 && op.arg < table->expr_count);
 
                 // ParseExpr *current_expr =   &lex->exprs[op.arg];
 
                 // shift to correct expr based on op.arg
-                ParseExpr *current_expr = (ParseExpr *)((U8 *)table + table->expr_start);
-                for (Usize i = 0; i < op.arg; ++i)
-                {
-                    current_expr = (ParseExpr *)(((I64 *)current_expr) + current_expr->production_count) + 1;
-                }
+                ParseExpr *current_expr = op.arg + (ParseExpr *)((U8 *)table + table->expr_header_start);
 
                 I64 left_hand_side_nonterminal = current_expr->non_terminal;
-                assert(left_hand_side_nonterminal >= 0);
+                assert_debug(left_hand_side_nonterminal >= 0);
                 Expr *left_hand_expr = nullptr;
                 if (syntax_tree_out != nullptr)
                 {
@@ -1179,9 +1172,9 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
                 for (I64 i = (I64)current_expr->production_count - 1; i >= 0; --i)
                 {
-                    assert(symbol_count <= symbol_stack_size);
+                    assert_debug(symbol_count <= symbol_stack_size);
                     I64 lr_item = symbol_stack[symbol_count++];
-                    I64 prod_lr = current_expr->prods[i];
+                    I64 prod_lr = ((I64 *)((U8 *)table + current_expr->prod_start))[i];
                     state_count += 1;
                     
                     if (lr_item != prod_lr)
@@ -1199,7 +1192,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
                     if (syntax_tree_out != nullptr)
                     {
-                        assert(expr_stack_count < symbol_stack_size);
+                        assert_debug(expr_stack_count < symbol_stack_size);
                         Expr *e = expr_stack[expr_stack_count++];
                         left_hand_expr->exprs[left_hand_expr->expr_count++] = e;
                     }
@@ -1208,7 +1201,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
                 {
                     expr_stack[--expr_stack_count] = left_hand_expr;
                 }
-                assert(symbol_count > 0);
+                assert_debug(symbol_count > 0);
                 symbol_stack[--symbol_count] = left_hand_side_nonterminal;
 
                 Usize top_of_state_stack = state_stack[state_count];
@@ -1219,7 +1212,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             case TableOperationType::GOTO:
             {
                 // should never actually happen, as gotos are handled when reducing
-                assert(false);
+                assert_always(false);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1235,7 +1228,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
             default:
             {
-                assert(false && "unreachable");
+                assert_always(false && "unreachable");
                 active = false;
                 succeded_parsing = false;
             }
@@ -1244,7 +1237,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
     if (syntax_tree_out != nullptr && succeded_parsing)
     {
-        assert(expr_stack_count < symbol_stack_size);
+        assert_debug(expr_stack_count < symbol_stack_size);
         *syntax_tree_out = expr_stack[expr_stack_count++];
     }
 
@@ -1260,7 +1253,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
 
 static void add_element_to_first_set(FirstSet *first_array, I64 lr_index, String terminal)
 {
-    assert(lr_index >= 0);
+    assert_always(lr_index >= 0);
     FirstSet *set = &first_array[lr_index];
 
 
@@ -1280,8 +1273,7 @@ static void add_element_to_first_set(FirstSet *first_array, I64 lr_index, String
 static void set_first(Lexer *lex)
 {
     Usize stack_size = 2048;
-    String *non_terminal_stack = alloc(String, stack_size);
-    memset(non_terminal_stack, 0, sizeof(*non_terminal_stack) * stack_size);
+    String *non_terminal_stack = alloc_zero(String, stack_size);
     Usize stack_count = stack_size;
 
     bool *checked_table = alloc(bool, lex->LR_items_count);
@@ -1299,7 +1291,7 @@ static void set_first(Lexer *lex)
             BNFExpression *expr = &lex->exprs[j];
             if (expr->prod_count > 0 && is_str(expr->prod_tokens[0].data, terminal))
             {
-                assert(stack_count > 0);
+                assert_debug(stack_count > 0);
                 non_terminal_stack[--stack_count] = expr->non_terminal.data;
             }
         }
@@ -1313,7 +1305,7 @@ static void set_first(Lexer *lex)
             if (is_str(make_string("S"), non_terminal)) continue;
 
             I64 lr_index = get_ir_item_index(lex, non_terminal);
-            assert(lr_index != -1);
+            assert_always(lr_index != -1);
 
             if (checked_table[lr_index]) continue;
 
@@ -1324,7 +1316,7 @@ static void set_first(Lexer *lex)
                 BNFExpression *expr = &lex->exprs[j];
                 if (expr->prod_count > 0 && is_str(expr->prod_tokens[0].data, non_terminal))
                 {
-                    assert(stack_count > 0);
+                    assert_debug(stack_count > 0);
                     non_terminal_stack[--stack_count] = expr->non_terminal.data;
                 }
             }
@@ -1395,7 +1387,7 @@ void parse_bnf_src(Lexer *lex, const char *src)
         move_past_whitespace(src, &cursor);
         while (src[cursor] != ':')
         {
-            assert(lex->expr_count < ARRAY_COUNT(lex->exprs));
+            assert_always(lex->expr_count < ARRAY_COUNT(lex->exprs));
             move_past_whitespace(src, &cursor);
 
             parse_BNFexpr_and_add_to_lexer(lex, src, &cursor);
@@ -1406,8 +1398,7 @@ void parse_bnf_src(Lexer *lex, const char *src)
     }
 
     Usize set_size = lex->LR_items_count;
-    FirstSet *first = alloc(FirstSet, set_size);
-    memset(first, 0, sizeof(*first) * set_size);
+    FirstSet *first = alloc_zero(FirstSet, set_size);
 
     lex->first_sets = first;
     set_first(lex);
@@ -1451,7 +1442,7 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
     FILE *f = fopen(file_path, "wb");
     if (f == nullptr)
     {
-        assert(false);
+        exit_with_error("ERROR: failed to open file %s\n", file_path);
         return;
     }
 
@@ -1465,7 +1456,7 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
 
     while (stack_count < stack_size)
     {
-        assert(stack_count < stack_size);
+        assert_debug(stack_count < stack_size);
         Expr *active_expr = expr_stack[stack_count++];
 
 
@@ -1484,7 +1475,7 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
         for (I64 i = (I64)active_expr->expr_count - 1; i >= 0; --i)
         {
             fprintf(f, "n%llu -- n%llu\n", (Usize)active_expr, (Usize)active_expr->exprs[i]);
-            assert(stack_count > 0);
+            assert_debug(stack_count > 0);
             expr_stack[--stack_count] = active_expr->exprs[i];
         }
     }
@@ -1497,7 +1488,7 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
 U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
 {
     ParseTable *table = create_parse_table_from_bnf(src);
-    U32 table_size = table->data_size;
+    U32 table_size = table->size_in_bytes;
     if (buffer == nullptr || table_size > buffer_size)
     {
         return table_size;
@@ -1508,9 +1499,9 @@ U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
 
 ParseTable *create_parse_table_from_bnf(const char *src)
 {
-    Lexer *lex = alloc(Lexer, 1);
+    Lexer *lex = alloc_zero(Lexer, 1);
     parse_bnf_src(lex, src);
-    State *state_list = alloc(State, 1024);
+    State *state_list = alloc_zero(State, 1024);
     U32 state_count;
     create_all_substates(state_list, &state_count, lex);
     ParseTable *table = create_parse_table_from_states(lex, state_list, state_count); 
@@ -1538,5 +1529,5 @@ void print_table(ParseTable *table)
 
 U32 get_table_size(ParseTable *table)
 {
-    return table->data_size;
+    return table->size_in_bytes;
 }

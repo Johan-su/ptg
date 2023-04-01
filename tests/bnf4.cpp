@@ -75,15 +75,15 @@ int main(void)
     // fclose(f);
     // print_table(table, lexer, state_count);
 
-    assert(!parse_str("", table));
-    assert(!parse_str("abcd", table));
-    assert(parse_str("0", table));
-    assert(parse_str("00", table));
-    assert(parse_str("1", table));
-    assert(parse_str("11", table));
-    assert(parse_str("2492328501235823580", table));
-    assert(parse_str("323123", table));
-    assert(parse_str("6364859", table));
-    assert(parse_str("123456", table));
+    assert_always(!parse_str("", table));
+    assert_always(!parse_str("abcd", table));
+    assert_always(parse_str("0", table));
+    assert_always(parse_str("00", table));
+    assert_always(parse_str("1", table));
+    assert_always(parse_str("11", table));
+    assert_always(parse_str("2492328501235823580", table));
+    assert_always(parse_str("323123", table));
+    assert_always(parse_str("6364859", table));
+    assert_always(parse_str("123456", table));
     printf("Finished %s\n", __FILE__);
 }

@@ -74,13 +74,13 @@ int main(void)
 {
     ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
-    assert(parse_str("", table));
-    assert(parse_str("1+1", table));
-    assert(parse_str("5+1", table));
-    assert(parse_str("5+4+3+2+1", table));
-    assert(parse_str("+4+3+2+", table));
-    assert(parse_str("+", table));
-    assert(!parse_str("00", table));
-    assert(!parse_str("5120412505721057214901279+4", table));
+    assert_always(parse_str("", table));
+    assert_always(parse_str("1+1", table));
+    assert_always(parse_str("5+1", table));
+    assert_always(parse_str("5+4+3+2+1", table));
+    assert_always(parse_str("+4+3+2+", table));
+    assert_always(parse_str("+", table));
+    assert_always(!parse_str("00", table));
+    assert_always(!parse_str("5120412505721057214901279+4", table));
     printf("Finished %s\n", __FILE__);
 }

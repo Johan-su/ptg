@@ -50,14 +50,14 @@ int main(void)
 
 
 
-    assert(!parse_str("", table));
-    assert(parse_str("a", table));
-    assert(!parse_str("t", table));
-    assert(parse_str("at", table));
-    assert(parse_str("att", table));
-    assert(parse_str("atttttttttttttttttttttttttttt", table));
-    assert(!parse_str("aaaaat", table));
-    assert(!parse_str("ata", table));
-    assert(!parse_str("ataatatatatatatatatattttatatataat", table));
+    assert_always(!parse_str("", table));
+    assert_always(parse_str("a", table));
+    assert_always(!parse_str("t", table));
+    assert_always(parse_str("at", table));
+    assert_always(parse_str("att", table));
+    assert_always(parse_str("atttttttttttttttttttttttttttt", table));
+    assert_always(!parse_str("aaaaat", table));
+    assert_always(!parse_str("ata", table));
+    assert_always(!parse_str("ataatatatatatatatatattttatatataat", table));
     printf("Finished %s\n", __FILE__);
 }
