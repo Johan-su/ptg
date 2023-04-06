@@ -103,6 +103,7 @@ static char *file_to_str(const char *file_path);
 int main(void)
 {
     char *bnf_source = file_to_str("./tests/bnf8.txt");
+    assert_always(bnf_source != nullptr);
     ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
 
@@ -119,7 +120,7 @@ int main(void)
     assert_always(parse_str("--1*1", table, nullptr));
     assert_always(parse_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", table, &tree));
     printf("%.*s\n", (int)sizeof(msg), msg);
-    graphviz_from_syntax_tree("./build/tests/input.dot", tree);
+    graphviz_from_syntax_tree("./build/tests/input_bnf8.dot", tree);
     free(bnf_source);
     printf("Finished %s\n", __FILE__);
 }

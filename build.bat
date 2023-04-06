@@ -6,8 +6,8 @@ set COMMON=-D _CRT_SECURE_NO_WARNINGS -std=c++11 %WARNINGS%
 
 
 @REM set SANITIZE=-fsanitize=address -fsanitize=undefined
-@REM set FLAGS=-O0 -D _DEBUG  -g -gcodeview %COMMON% %SANITIZE%
-set FLAGS=-O2 %COMMON%
+set FLAGS=-O0 -D _DEBUG  -g -gcodeview %COMMON% %SANITIZE%
+@REM set FLAGS=-O2 %COMMON%
 
 
 if not exist build mkdir build

@@ -1016,14 +1016,17 @@ static String get_string_from_lr(ParseTable *table, I64 lr)
     //TODO(Johan): check if this is also used for terminals and not only non_terminals
     assert_always(lr >= 0 && lr < table->LR_items_count);
 
+
+    I64 header_index = lr - (table->LR_items_count - table->string_header_count);
+
     U8 *parse_bin = (U8 *)table;
 
     String str = {};
     {
         StringHeader *header_data = (StringHeader *)(parse_bin + table->string_header_start);
 
-        str.data = (char *)(parse_bin + header_data[lr].str_start);
-        str.length = header_data[lr].count;
+        str.data = (char *)(parse_bin + header_data[header_index].str_start);
+        str.length = header_data[header_index].count;
     }
     return str;
 }
@@ -1460,17 +1463,7 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
         Expr *active_expr = expr_stack[stack_count++];
 
 
-        String ir_str;
-        if (false && active_expr->token.length == 0)
-        {
-            char tmp_buffer[32] = {};
-            snprintf(tmp_buffer, sizeof(tmp_buffer), "Tokentype[%lld]", active_expr->token.token_type);
-            ir_str = make_string(tmp_buffer);   
-        }
-        else
-        {
-            ir_str = {active_expr->token.data, active_expr->token.length};
-        }
+        String ir_str = {active_expr->token.data, active_expr->token.length};
         fprintf(f, "n%llu [label=\"%.*s\"];\n", (Usize)active_expr, (int)ir_str.length, ir_str.data);
         for (I64 i = (I64)active_expr->expr_count - 1; i >= 0; --i)
         {
