@@ -45,9 +45,9 @@ int main(void)
 
     ParseTable *table;
     {
-        Lexer *lex = alloc_zero(Lexer, 1);
+        Lexer *lex = alloc(Lexer, 1);
         parse_bnf_src(lex, bnf_source);
-        State *state_list = alloc_zero(State, 1024);
+        State *state_list = alloc(State, 1024);
         U32 state_count;
         create_all_substates(state_list, &state_count, lex);
         // for (Usize i = 0; i < state_count; ++i)

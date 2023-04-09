@@ -45,7 +45,7 @@ static char *file_to_str(const char *file_path)
     }
     {
         Usize buf_size = (Usize)file_size + 1; 
-        str = alloc_zero(char, buf_size);
+        str = alloc(char, buf_size);
     }
     if (fread(str, sizeof(*str), (Usize)file_size, f) != (Usize)file_size)
     {
@@ -144,7 +144,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             const char *format = "[%-7s, %u] ";
             Usize block_size = (Usize)snprintf(nullptr, 0, format, op_to_str(table_data[0].type), table_data[0].arg);
             Usize data_str_size = block_size * table->LR_items_count * table->state_count + table->state_count * 1;
-            char *data_str = alloc_zero(char, data_str_size);
+            char *data_str = alloc(char, data_str_size);
             char *temp_block = alloc(char, block_size + 1); // + 1 for null
 
             for (Usize y = 0; y < table->state_count; ++y)
@@ -168,7 +168,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             Usize pre_len = str_len(pre);
             const char *post = "};\n";
             Usize data_str_size = pre_len + 4 * table->size_in_bytes + str_len(post);
-            char *data_str = alloc_zero(char, data_str_size);
+            char *data_str = alloc(char, data_str_size);
             strcat(data_str, pre);
             char temp_buf[5];
 
@@ -189,7 +189,7 @@ static int create_parsing_table_from_cmd(const char *source_path, const char *ou
             unsigned int pre_len = (unsigned int)snprintf(temp_buffer, sizeof(temp_buffer), "const table : [U8; %u] = [", table->size_in_bytes);
             const char *post = "];\n";
             Usize data_str_size = pre_len + 4 * table->size_in_bytes + str_len(post);
-            char *data_str = alloc_zero(char, data_str_size);
+            char *data_str = alloc(char, data_str_size);
             strcat(data_str, temp_buffer);
             char temp_buf[5];
 

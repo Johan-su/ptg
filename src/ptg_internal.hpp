@@ -44,9 +44,9 @@ static inline void *debug_calloc(size_t amount, size_t size, const char *file, i
 
 
 // #define malloc(size) debug_malloc(size, __FILE__, __LINE__)
-// #define calloc(size) debug_calloc((amount), size, __FILE__, __LINE__)
-#define alloc(type, amount) (type *)malloc(sizeof(type) * (amount))
-#define alloc_zero(type, amount) (type *)calloc((amount), sizeof(type))
+// #define calloc(amount, size) debug_calloc((amount), size, __FILE__, __LINE__)
+#define alloc(type, amount) (type *)calloc((amount), sizeof(type))
+#define alloc_non_zero(type, amount) (type *)malloc(sizeof(type) * (amount))
 
 typedef uint8_t U8;
 typedef uint16_t U16;

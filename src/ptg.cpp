@@ -12,6 +12,7 @@
 // TODO: add better error handling when creating parsing table
 // TODO: when parsing, output the amount of chars written  
 // TODO: provide better error handling in general with error codes
+// TODO: predict required memory to parse list of tokens, if possible
 
 
 
@@ -170,8 +171,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
             }
             else
             {
-                fprintf(stderr, "ERROR: unexpected %c in bnf\n", src[*cursor]);
-                exit(1);
+                exit_with_error("ERROR: unexpected %c in bnf\n", src[*cursor]);
             }
         }
 
@@ -505,7 +505,7 @@ static State g_active_substate = {};
 static void create_substates_from_state(State *state, State *state_list, U32 *state_list_count, Lexer *lex)
 {
     assert_always(state->expr_count < ARRAY_COUNT(state->exprs));
-    bool *check_list = alloc_zero(bool, state->expr_count);
+    bool *check_list = alloc(bool, state->expr_count);
 
     for (Usize i = 0; i < state->expr_count; ++i)
     {
@@ -799,7 +799,7 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
 ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count)
 {
     Usize table_size = state_count * lex->LR_items_count;
-    BNFExpression **meta_expr_table = alloc_zero(BNFExpression *, table_size);
+    BNFExpression **meta_expr_table = alloc(BNFExpression *, table_size);
     ParseTable *parse_table = nullptr;  
 
 
@@ -841,8 +841,7 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
     parse_table_size += str_to_prods_padding;
     parse_table_size += prods_size_bytes;
 
-    parse_table = (ParseTable *)malloc(parse_table_size);
-    memset(parse_table, 0, parse_table_size);
+    parse_table = (ParseTable *)calloc(1, parse_table_size);
 
 
 
@@ -1276,7 +1275,7 @@ static void add_element_to_first_set(FirstSet *first_array, I64 lr_index, String
 static void set_first(Lexer *lex)
 {
     Usize stack_size = 2048;
-    String *non_terminal_stack = alloc_zero(String, stack_size);
+    String *non_terminal_stack = alloc(String, stack_size);
     Usize stack_count = stack_size;
 
     bool *checked_table = alloc(bool, lex->LR_items_count);
@@ -1401,7 +1400,7 @@ void parse_bnf_src(Lexer *lex, const char *src)
     }
 
     Usize set_size = lex->LR_items_count;
-    FirstSet *first = alloc_zero(FirstSet, set_size);
+    FirstSet *first = alloc(FirstSet, set_size);
 
     lex->first_sets = first;
     set_first(lex);
@@ -1492,9 +1491,9 @@ U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
 
 ParseTable *create_parse_table_from_bnf(const char *src)
 {
-    Lexer *lex = alloc_zero(Lexer, 1);
+    Lexer *lex = alloc(Lexer, 1);
     parse_bnf_src(lex, src);
-    State *state_list = alloc_zero(State, 1024);
+    State *state_list = alloc(State, 1024);
     U32 state_count;
     create_all_substates(state_list, &state_count, lex);
     ParseTable *table = create_parse_table_from_states(lex, state_list, state_count); 
