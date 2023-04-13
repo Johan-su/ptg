@@ -25,8 +25,6 @@ typedef int64_t I64;
 
 
 
-
-
 struct ParseTable;
 struct ParseToken
 {
@@ -42,14 +40,19 @@ struct Expr
 };
 
 
+// returns 0 on success, otherwise returns the difference between table size and buffer size
 PTG_DEFINE U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src);
+// returns null on failure
 PTG_DEFINE ParseTable *create_parse_table_from_bnf(const char *src);
 
-PTG_DEFINE void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list);
+// returns true on success, false on failure
+PTG_DEFINE bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list);
 
-#define PRINT_EVERY_PARSE_STEP (1 << 0)
+#define PRINT_EVERY_PARSE_STEP_FLAG (1 << 0)
 
+// returns true on successfull parse, otherwise false
 PTG_DEFINE bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
+// returns true on successfull parse, otherwise false
 PTG_DEFINE bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
 
 PTG_DEFINE U32 get_table_size(ParseTable *table);

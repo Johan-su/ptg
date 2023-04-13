@@ -14,6 +14,22 @@
 // TODO: provide better error handling in general with error codes
 // TODO: predict required memory to parse list of tokens, if possible
 
+// TODO(Johan): make thread safe
+static void default_flush(Program_Context *context)
+{
+    fprintf(stderr, "%.*s", (int)context->msg_buf_count, context->msg_buf);
+    context->msg_buf_count = 0;
+}
+
+static char msg_buffer[4096];
+
+static Program_Context g_context = {
+    default_flush,
+    msg_buffer,
+    0,
+    sizeof(msg_buffer),
+};
+
 
 
 static bool is_whitespace(char c)
@@ -29,14 +45,43 @@ static bool is_whitespace(char c)
     }
 }
 
+static bool print_formated(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int char_len = vsnprintf(g_context.msg_buf, g_context.msg_buf_count, format, args);
+    va_end(args);
+    if (char_len < 0)
+    {
+        return false;
+    }
+    if ((Usize)char_len > g_context.msg_buf_size)
+    {
+        g_context.msg_buf_count = g_context.msg_buf_size;
+    }
+    else
+    {
+        g_context.msg_buf_count = (Usize)char_len;
+    }
+    g_context.flush_func(&g_context);
 
-#define exit_with_error(format, ...) \
+    return true;
+}
+
+
+#define exit_with_error(exit_code, format, ...) \
 do \
 { \
-    fprintf(stderr, format, __VA_ARGS__); \
-    exit(1); \
+    print_formated(format, __VA_ARGS__); \
+    exit(exit_code); \
 } while (0)
 
+#define return_with_error(exit_code, format, ...) \
+do \
+{ \
+    print_formated(format, __VA_ARGS__); \
+    return (exit_code); \
+} while (0)
 
 static void expect(const char *src, Usize *cursor, const char *cmp)
 {
@@ -46,7 +91,7 @@ static void expect(const char *src, Usize *cursor, const char *cmp)
     {
         if (src[*cursor] != cmp[compare_val] || src[*cursor] == '\0')
         {
-            exit_with_error("ERROR: expected %s but got %s", &cmp[compare_val], &src[*cursor]);
+            exit_with_error(1, "ERROR: expected %s but got %s", &cmp[compare_val], &src[*cursor]);
         }
         *cursor += 1;
         compare_val = *cursor - start_cursor;
@@ -124,7 +169,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
     BNFToken expr_non_terminal = parse_non_terminal_id(src, cursor);
     if (get_ir_item_index(lex, expr_non_terminal.data) != -1)
     {
-        exit_with_error("ERROR: <%.*s> already found, use '|' to define multiple productions for a non terminal\n", (int)expr_non_terminal.data.length, expr_non_terminal.data.data);
+        exit_with_error(1, "ERROR: <%.*s> already found, use '|' to define multiple productions for a non terminal\n", (int)expr_non_terminal.data.length, expr_non_terminal.data.data);
     }
     if (!is_str(expr_non_terminal.data, make_string("S")))
     {
@@ -171,7 +216,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
             }
             else
             {
-                exit_with_error("ERROR: unexpected %c in bnf\n", src[*cursor]);
+                exit_with_error(1, "ERROR: unexpected %c in bnf\n", src[*cursor]);
             }
         }
 
@@ -359,20 +404,6 @@ void fprint_state(FILE *stream, State *state)
         fprintf(stream, "\n");
     }
 }
-
-
-static void print_state(State *state)
-{
-    fprint_state(stdout, state);
-}
-
-
-
-
-
-
-
-
 
 
 static bool is_expr_already_expanded(State *state, BNFExpression *expr)
@@ -651,7 +682,7 @@ void graph_from_state_list(FILE *f, State *state_list, Usize state_count)
 
 
 
-static void print_parse_table(ParseTable *table)
+void print_table(ParseTable *table)
 {
     U8 *table_bin = (U8 *)table;
 
@@ -800,7 +831,7 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
 {
     Usize table_size = state_count * lex->LR_items_count;
     BNFExpression **meta_expr_table = alloc(BNFExpression *, table_size);
-    ParseTable *parse_table = nullptr;  
+    if (meta_expr_table == nullptr) return nullptr;
 
 
     Usize string_headers_size_bytes = sizeof(StringHeader) * (lex->LR_items_count - lex->terminals_count);
@@ -824,7 +855,7 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
 
 
     Usize parse_table_size = 0;
-    parse_table_size += sizeof(*parse_table);
+    parse_table_size += sizeof(ParseTable);
     Usize table_to_string_header_padding = PADDING_FOR_ALIGNMENT(parse_table_size, StringHeader);
     parse_table_size += table_to_string_header_padding;
     parse_table_size += string_headers_size_bytes;
@@ -841,7 +872,8 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
     parse_table_size += str_to_prods_padding;
     parse_table_size += prods_size_bytes;
 
-    parse_table = (ParseTable *)calloc(1, parse_table_size);
+    ParseTable *parse_table = (ParseTable *)calloc(1, parse_table_size);
+    if (parse_table == nullptr) return nullptr;
 
 
 
@@ -1010,7 +1042,7 @@ ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 st
     return parse_table;
 }
 
-static String get_string_from_lr(ParseTable *table, I64 lr)
+static String get_string_from_lr(const ParseTable *table, I64 lr)
 {
     //TODO(Johan): check if this is also used for terminals and not only non_terminals
     assert_always(lr >= 0 && lr < table->LR_items_count);
@@ -1029,6 +1061,12 @@ static String get_string_from_lr(ParseTable *table, I64 lr)
     }
     return str;
 }
+
+
+
+
+
+
 
 static bool print_formated_error(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, const char *format, ...)
 {
@@ -1056,7 +1094,7 @@ static bool print_formated_error(char *err_msg_out, Usize *err_msg_size, Usize *
     return true;
 }
 
-static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_count, ParseTable *table, U32 flags, Expr **syntax_tree_out, char *err_msg_out, Usize msg_buf_size)
+static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize token_count, const ParseTable *table, U32 flags, Expr **syntax_tree_out, char *err_msg_out, Usize msg_buf_size)
 {
     Usize state_stack_size = 1024; 
     U32 *state_stack = alloc(U32, state_stack_size);
@@ -1112,7 +1150,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
         {
             case TableOperationType::INVALID:
             {
-                if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
+                if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
 
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
@@ -1124,7 +1162,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             } break;
             case TableOperationType::SHIFT:
             {
-                if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
+                if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
@@ -1143,7 +1181,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             } break;
             case TableOperationType::REDUCE:
             {
-                if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
+                if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
@@ -1220,7 +1258,7 @@ static bool parse_tokens_with_parse_table(ParseToken *token_list, Usize token_co
             } break;
             case TableOperationType::ACCEPT:
             {
-                if ((flags & PRINT_EVERY_PARSE_STEP) == PRINT_EVERY_PARSE_STEP)
+                if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "ACCEPT\n");
                 }
@@ -1350,7 +1388,7 @@ static void parse_token(const char *src, Usize *cursor, Lexer *lex)
     {
         if (src[*cursor] == '\0')
         {
-            exit_with_error("ERROR: failed to parse token\n");
+            exit_with_error(1, "ERROR: failed to parse token\n");
         }
 
 
@@ -1439,13 +1477,12 @@ void create_all_substates(State *state_list, U32 *state_count, Lexer *lex)
     }
 }
 
-void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
+bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
 {
     FILE *f = fopen(file_path, "wb");
     if (f == nullptr)
     {
-        exit_with_error("ERROR: failed to open file %s\n", file_path);
-        return;
+        return_with_error(false, "ERROR: failed to open file %s\n", file_path);
     }
 
     fprintf(f, "graph G {\n");
@@ -1475,25 +1512,41 @@ void graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
     fprintf(f, "}\n");
     free(expr_stack);
     fclose(f);
+    return true;
 }
 
 U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
 {
+    assert_debug(buffer != nullptr);
     ParseTable *table = create_parse_table_from_bnf(src);
     U32 table_size = table->size_in_bytes;
-    if (buffer == nullptr || table_size > buffer_size)
+    U32 return_val = 0;
+    if (table_size > buffer_size)
     {
-        return table_size;
+        return_val = table_size - buffer_size;
     }
-    memcpy(buffer, table, table_size);
-    return 0;
+    else
+    {
+        memcpy(buffer, table, table_size);
+    }
+    free(table);
+    return return_val;
 }
 
 ParseTable *create_parse_table_from_bnf(const char *src)
 {
     Lexer *lex = alloc(Lexer, 1);
+    if (lex == nullptr) return nullptr;
+
     parse_bnf_src(lex, src);
+
     State *state_list = alloc(State, 1024);
+    if (state_list == nullptr)
+    {
+        free(lex);
+        return nullptr;
+    }
+
     U32 state_count;
     create_all_substates(state_list, &state_count, lex);
     ParseTable *table = create_parse_table_from_states(lex, state_list, state_count); 
@@ -1504,19 +1557,14 @@ ParseTable *create_parse_table_from_bnf(const char *src)
 }
 
 
-bool parse(ParseToken *token_list, U32 token_count, ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)
+bool parse(const ParseToken *token_list, U32 token_count, const ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)
 {
     return parse_tokens_with_parse_table(token_list, token_count, table, flags, opt_tree_out, opt_error_msg_out, msg_buf_size);
 }
 
-bool parse_bin(ParseToken *token_list, U32 token_count, U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)
+bool parse_bin(const ParseToken *token_list, U32 token_count, const U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)
 {
     return parse_tokens_with_parse_table(token_list, token_count, (ParseTable *)table, flags, opt_tree_out, opt_error_msg_out, msg_buf_size);
-}
-
-void print_table(ParseTable *table)
-{
-    print_parse_table(table);
 }
 
 U32 get_table_size(ParseTable *table)

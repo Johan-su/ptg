@@ -5,6 +5,10 @@
 #include <stdlib.h>
 
 
+
+
+
+
 #define assert_always(condition)                                                                    \
 do                                                                                                  \
 {                                                                                                   \
@@ -61,11 +65,22 @@ typedef int32_t I32;
 typedef int64_t I64;
 
 
+
+struct Program_Context
+{
+    void (*flush_func)(Program_Context *);
+    char *msg_buf;
+    Usize msg_buf_count;
+    Usize msg_buf_size;
+};
+
+
 struct String
 {
     const char *data;
     Usize length;
 };
+
 
 
 struct ParseExpr
