@@ -20,7 +20,10 @@ cd ..
 cd ..
 
 %CLANG% -shared src/ptg.cpp %FLAGS% -D BUILD_DLL -o build/ptg.dll
+%CLANG% src/ptg.cpp %FLAGS% -o build/ptg.lib -fuse-ld=llvm-lib 
 %CLANG% src/ptg.cpp src/ptg_cmd.cpp %FLAGS% -o build/ptg.exe
+
+
 
 %CLANG% src/ptg.cpp tests/bnf1.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf1.exe && "build/tests/bnf1.exe"
 %CLANG% src/ptg.cpp tests/bnf2.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf2.exe && "build/tests/bnf2.exe" 
