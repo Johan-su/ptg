@@ -50,20 +50,20 @@ static bool parse_str(const char *str, ParseTable *table)
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1};
-        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index], 1};
-        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index], 1};
-        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index], 1};
-        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index], 1};
-        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index], 1};
-        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index], 1};
-        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index], 1};
-        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index], 1};
-        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index], 1};
-        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index], 1};
+        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1, 1};
+        else if (str[index] == '0') token_list[token_count++] = {TOKEN_0, &str[index], 1, 1};
+        else if (str[index] == '1') token_list[token_count++] = {TOKEN_1, &str[index], 1, 1};
+        else if (str[index] == '2') token_list[token_count++] = {TOKEN_2, &str[index], 1, 1};
+        else if (str[index] == '3') token_list[token_count++] = {TOKEN_3, &str[index], 1, 1};
+        else if (str[index] == '4') token_list[token_count++] = {TOKEN_4, &str[index], 1, 1};
+        else if (str[index] == '5') token_list[token_count++] = {TOKEN_5, &str[index], 1, 1};
+        else if (str[index] == '6') token_list[token_count++] = {TOKEN_6, &str[index], 1, 1};
+        else if (str[index] == '7') token_list[token_count++] = {TOKEN_7, &str[index], 1, 1};
+        else if (str[index] == '8') token_list[token_count++] = {TOKEN_8, &str[index], 1, 1};
+        else if (str[index] == '9') token_list[token_count++] = {TOKEN_9, &str[index], 1, 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 0};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
    return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
 }

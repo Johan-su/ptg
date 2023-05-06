@@ -1094,6 +1094,28 @@ static bool print_formated_error(char *err_msg_out, Usize *err_msg_size, Usize *
     return true;
 }
 
+
+static bool print_formated_error_string(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, String str)
+{
+    if (err_msg_out == nullptr || *err_msg_size <= 0)
+    {
+        return false;
+    }
+
+    if (str.length > *err_msg_size)
+    {
+        return false;
+    }
+    for (Usize i = 0; i < str.length; ++i)
+    {
+        err_msg_out[*err_str_index++] = str.data[i * str.stride];
+        *err_msg_size -= 1;
+    }
+    return true;
+}
+
+
+
 static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize token_count, const ParseTable *table, U32 flags, Expr **syntax_tree_out, char *err_msg_out, Usize msg_buf_size)
 {
     Usize state_stack_size = 1024; 
@@ -1156,7 +1178,10 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                     print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "lookahead_ir_index: %lld, state: %u\n", lookahead_lr_index, state_stack[state_count]);
                 }
-                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected %.*s token\n", (int)token_list[index].length, token_list[index].data);
+                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected ");
+                print_formated_error_string(err_msg_out, &msg_buf_size, &err_str_index, String {token_list[index].data, token_list[index].length, token_list[index].stride});
+                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "token\n");
+                // print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected %.*s token\n", (int)token_list[index].length, token_list[index].data);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1202,6 +1227,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
                         String non_terminal_str = get_string_from_lr(table, left_hand_side_nonterminal);
                         token.token_type = left_hand_side_nonterminal;
                         token.data = non_terminal_str.data;
+                        token.stride = non_terminal_str.stride;
                         token.length = (U32)non_terminal_str.length;
                     }
 
@@ -1499,7 +1525,7 @@ bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
         Expr *active_expr = expr_stack[stack_count++];
 
 
-        String ir_str = {active_expr->token.data, active_expr->token.length};
+        String ir_str = {active_expr->token.data, active_expr->token.length, active_expr->token.stride};
         fprintf(f, "n%llu [label=\"%.*s\"];\n", (Usize)active_expr, (int)ir_str.length, ir_str.data);
         for (I64 i = (I64)active_expr->expr_count - 1; i >= 0; --i)
         {

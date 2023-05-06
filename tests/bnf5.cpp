@@ -32,10 +32,10 @@ static bool parse_str(const char *str, ParseTable *table)
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index], 1};
+        if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index], 1, 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 0};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
 
     memset(msg, 0, sizeof(msg));

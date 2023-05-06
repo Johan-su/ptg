@@ -79,6 +79,7 @@ struct String
 {
     const char *data;
     Usize length;
+    U8 stride;
 };
 
 
@@ -197,7 +198,7 @@ static Usize str_len(const char *str)
 
 static String make_string(const char *cstr)
 {
-    return String {cstr, str_len(cstr)};
+    return String {cstr, str_len(cstr), 1};
 }
 
 

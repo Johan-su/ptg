@@ -31,6 +31,7 @@ struct ParseToken
     I64 token_type;
     const char *data;
     U32 length;
+    U8 stride;
 };
 struct Expr
 {

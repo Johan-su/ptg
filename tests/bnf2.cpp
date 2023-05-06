@@ -36,12 +36,12 @@ static bool parse_str(const char *str, ParseTable *table)
     int index = 0;
     for (;str[index] != '\0'; ++index)
     {
-        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1};
-        else if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index], 1};
-        else if (str[index] == 'b') token_list[token_count++] = {TOKEN_b, &str[index], 1};
+        if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1, 1};
+        else if (str[index] == 'a') token_list[token_count++] = {TOKEN_a, &str[index], 1, 1};
+        else if (str[index] == 'b') token_list[token_count++] = {TOKEN_b, &str[index], 1, 1};
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 0};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
    return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
 }
