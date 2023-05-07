@@ -1108,7 +1108,8 @@ static bool print_formated_error_string(char *err_msg_out, Usize *err_msg_size, 
     }
     for (Usize i = 0; i < str.length; ++i)
     {
-        err_msg_out[*err_str_index++] = str.data[i * str.stride];
+        err_msg_out[*err_str_index] = str.data[i * str.stride];
+        *err_str_index += 1;
         *err_msg_size -= 1;
     }
     return true;
@@ -1180,7 +1181,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
                 }
                 print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected ");
                 print_formated_error_string(err_msg_out, &msg_buf_size, &err_str_index, String {token_list[index].data, token_list[index].length, token_list[index].stride});
-                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "token\n");
+                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, " token\n");
                 // print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected %.*s token\n", (int)token_list[index].length, token_list[index].data);
                 active = false;
                 succeded_parsing = false;
