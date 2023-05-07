@@ -63,7 +63,7 @@ static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
             }
             index += count - 1;
 
-            token_list[token_count++] = {TOKEN_Id, start, count};
+            token_list[token_count++] = {TOKEN_Id, start, count, 1};
         }
         else if (is_number(str[index]))
         {
@@ -75,19 +75,19 @@ static bool parse_str(const char *str, ParseTable *table, Expr **out_tree)
             }
             index += count - 1;
 
-            token_list[token_count++] = {TOKEN_Number, start, count};
+            token_list[token_count++] = {TOKEN_Number, start, count, 1};
         }
-        else if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1};
-        else if (str[index] == '-') token_list[token_count++] = {TOKEN_minus, &str[index], 1};
-        else if (str[index] == '*') token_list[token_count++] = {TOKEN_times, &str[index], 1};
-        else if (str[index] == '/') token_list[token_count++] = {TOKEN_divide, &str[index], 1};
-        else if (str[index] == '=') token_list[token_count++] = {TOKEN_equal, &str[index], 1};
-        else if (str[index] == '(') token_list[token_count++] = {TOKEN_open, &str[index], 1};
-        else if (str[index] == ')') token_list[token_count++] = {TOKEN_close, &str[index], 1};
+        else if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1, 1};
+        else if (str[index] == '-') token_list[token_count++] = {TOKEN_minus, &str[index], 1, 1};
+        else if (str[index] == '*') token_list[token_count++] = {TOKEN_times, &str[index], 1, 1};
+        else if (str[index] == '/') token_list[token_count++] = {TOKEN_divide, &str[index], 1, 1};
+        else if (str[index] == '=') token_list[token_count++] = {TOKEN_equal, &str[index], 1, 1};
+        else if (str[index] == '(') token_list[token_count++] = {TOKEN_open, &str[index], 1, 1};
+        else if (str[index] == ')') token_list[token_count++] = {TOKEN_close, &str[index], 1, 1};
         else if (is_whitespace(str[index])) {}
         else return false;
     }
-    token_list[token_count++] = {TOKEN_End, nullptr, 0};
+    token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
     memset(msg, 0, sizeof(msg));
     return parse(token_list, token_count, table, PRINT_EVERY_PARSE_STEP_FLAG, out_tree, msg, sizeof(msg));
