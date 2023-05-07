@@ -23,13 +23,18 @@ cd ..
 %CLANG% src/ptg.cpp %FLAGS% -o build/ptg.lib -fuse-ld=llvm-lib 
 %CLANG% src/ptg.cpp src/ptg_cmd.cpp %FLAGS% -o build/ptg.exe
 
+echo Test: > build/tests/bnf_text.txt 2>&1
 
+%CLANG% src/ptg.cpp tests/bnf1.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf1.exe && "build/tests/bnf1.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf2.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf2.exe && "build/tests/bnf2.exe" >> build/tests/bnf_text.txt 2>&1 
+%CLANG% src/ptg.cpp tests/bnf3.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf3.exe && "build/tests/bnf3.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf4.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf4.exe && "build/tests/bnf4.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf5.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf5.exe && "build/tests/bnf5.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf6.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf6.exe && "build/tests/bnf6.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf7.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf7.exe && "build/tests/bnf7.exe" >> build/tests/bnf_text.txt 2>&1
+@REM %CLANG% src/ptg.cpp tests/bnf8.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf8.exe && "build/tests/bnf8.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf9.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf9.exe && "build/tests/bnf9.exe" >> build/tests/bnf_text.txt 2>&1
 
-%CLANG% src/ptg.cpp tests/bnf1.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf1.exe && "build/tests/bnf1.exe"
-%CLANG% src/ptg.cpp tests/bnf2.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf2.exe && "build/tests/bnf2.exe" 
-%CLANG% src/ptg.cpp tests/bnf3.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf3.exe && "build/tests/bnf3.exe"
-%CLANG% src/ptg.cpp tests/bnf4.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf4.exe && "build/tests/bnf4.exe"
-%CLANG% src/ptg.cpp tests/bnf5.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf5.exe && "build/tests/bnf5.exe"
-%CLANG% src/ptg.cpp tests/bnf6.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf6.exe && "build/tests/bnf6.exe"
-%CLANG% src/ptg.cpp tests/bnf7.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf7.exe && "build/tests/bnf7.exe"
-@REM %CLANG% src/ptg.cpp tests/bnf8.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf8.exe && "build/tests/bnf8.exe"
+@REM copy "build\tests\bnf_text.txt" "tests\bnf_expected_output.txt"
+
+fc "build\tests\bnf_text.txt" "tests\bnf_expected_output.txt"

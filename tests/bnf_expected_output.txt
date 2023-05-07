@@ -1,0 +1,24 @@
+Test: 
+Finished tests/bnf1.cpp
+Finished tests/bnf2.cpp
+Finished tests/bnf3.cpp
+Finished tests/bnf4.cpp
+Unexpected a token
+
+Finished tests/bnf5.cpp
+<E>
+<T>
+<-1> -> 3
+<3> -> 4 0 3
+<3> -> 4
+<4> -> 1
+[INVALID, 0] [SHIFT  , 3] [INVALID, 0] [GOTO   , 1] [GOTO   , 2] 
+[INVALID, 0] [INVALID, 0] [ACCEPT , 0] [INVALID, 0] [INVALID, 0] 
+[SHIFT  , 4] [INVALID, 0] [REDUCE , 2] [INVALID, 0] [INVALID, 0] 
+[REDUCE , 3] [INVALID, 0] [REDUCE , 3] [INVALID, 0] [INVALID, 0] 
+[INVALID, 0] [SHIFT  , 3] [INVALID, 0] [GOTO   , 5] [GOTO   , 2] 
+[INVALID, 0] [INVALID, 0] [REDUCE , 1] [INVALID, 0] [INVALID, 0] 
+Finished tests/bnf6.cpp
+Finished tests/bnf7.cpp
+Unexpected a token
+Finished tests/bnf9.cpp
