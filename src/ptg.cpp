@@ -115,6 +115,7 @@ static BNFToken parse_non_terminal_id(const char *src, Usize *cursor)
     String id = {};
     id.data = src + *cursor;
     id.length = 0;
+    id.stride = 1;
 
     while (src[*cursor] != '>')
     {
@@ -136,6 +137,7 @@ static BNFToken parse_terminal(const char *src, Usize *cursor)
     String id = {};
     id.data = src + *cursor;
     id.length = 0;
+    id.stride = 1;
 
     while (src[*cursor] != '\'')
     {
@@ -1424,6 +1426,7 @@ static void parse_token(const char *src, Usize *cursor, Lexer *lex)
         *cursor += 1;
     }
     token_str.length = count;
+    token_str.stride = 1;
 
     lex->LR_items[lex->LR_items_count++] = token_str;
     lex->terminals_count += 1;
