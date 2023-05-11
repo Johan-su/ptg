@@ -1058,6 +1058,7 @@ static String get_string_from_lr(const ParseTable *table, I64 lr)
 
         str.data = (char *)(parse_bin + header_data[header_index].str_start);
         str.length = header_data[header_index].count;
+        str.stride = 1;
     }
     return str;
 }
@@ -1526,8 +1527,16 @@ bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
         Expr *active_expr = expr_stack[stack_count++];
 
 
-        String ir_str = {active_expr->token.data, active_expr->token.length, active_expr->token.stride};
-        fprintf(f, "n%llu [label=\"%.*s\"];\n", (Usize)active_expr, (int)ir_str.length, ir_str.data);
+        {
+            String ir_str = {active_expr->token.data, active_expr->token.length, active_expr->token.stride};
+            fprintf(f, "n%llu [label=\"", (Usize)active_expr);
+            for (Usize i = 0; i < ir_str.length; ++i)
+            {
+                fprintf(f, "%c", ir_str.data[i * ir_str.stride]);
+            }
+            fprintf(f, "\"];\n");
+        }
+
         for (I64 i = (I64)active_expr->expr_count - 1; i >= 0; --i)
         {
             fprintf(f, "n%llu -- n%llu\n", (Usize)active_expr, (Usize)active_expr->exprs[i]);
