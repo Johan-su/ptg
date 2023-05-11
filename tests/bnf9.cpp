@@ -259,8 +259,8 @@ int main(void)
     assert_always(parse_str(create_wide_string("1/1"), table, nullptr));
     assert_always(parse_str(create_wide_string("1-1"), table, nullptr));
     assert_always(parse_str(create_wide_string("-1+1"), table, nullptr));
-    assert_always(parse_str(create_wide_string("--1*1"), table, &tree));
-    assert_always(parse_str(create_wide_string("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)"), table, nullptr));
+    assert_always(parse_str(create_wide_string("--1*1"), table, nullptr));
+    assert_always(parse_str(create_wide_string("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)"), table, &tree));
     graphviz_from_syntax_tree("./input.dot", tree);
     printf("Finished %s\n", __FILE__);
 }
