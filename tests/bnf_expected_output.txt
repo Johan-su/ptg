@@ -4,7 +4,6 @@ Finished tests/bnf2.cpp
 Finished tests/bnf3.cpp
 Finished tests/bnf4.cpp
 Unexpected a token
-
 Finished tests/bnf5.cpp
 <E>
 <T>
@@ -20,5 +19,4 @@ Finished tests/bnf5.cpp
 [INVALID, 0] [INVALID, 0] [REDUCE , 1] [INVALID, 0] [INVALID, 0] 
 Finished tests/bnf6.cpp
 Finished tests/bnf7.cpp
-Unexpected a token
-Finished tests/bnf9.cpp
+Unexpected a tokenFinished tests/bnf9.cpp
