@@ -8,10 +8,10 @@
 // https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
 
 
+
 // TODO list:
 // TODO: add better error handling when creating parsing table
 // TODO: when parsing, output the amount of chars written  
-// TODO: provide better error handling in general with error codes
 // TODO: predict required memory to parse list of tokens, if possible
 
 // TODO(Johan): make thread safe
@@ -83,7 +83,15 @@ do \
     return (exit_code); \
 } while (0)
 
-static void expect(const char *src, Usize *cursor, const char *cmp)
+#define TRY(function) \
+do \
+{ \
+    auto temp = (function); \
+    if (temp) return temp; \
+} while(0)
+
+
+static Errcode expect(const char *src, Usize *cursor, const char *cmp)
 {
     Usize start_cursor = *cursor; 
     Usize compare_val = *cursor - start_cursor;
@@ -91,11 +99,12 @@ static void expect(const char *src, Usize *cursor, const char *cmp)
     {
         if (src[*cursor] != cmp[compare_val] || src[*cursor] == '\0')
         {
-            exit_with_error(1, "ERROR: expected %s but got %s", &cmp[compare_val], &src[*cursor]);
+            return_with_error(1, "ERROR: expected %s but got %s", &cmp[compare_val], &src[*cursor]);
         }
         *cursor += 1;
         compare_val = *cursor - start_cursor;
     }
+    return 0;
 }
 
 static void move_past_whitespace(const char *src, Usize *cursor)
@@ -165,21 +174,21 @@ static I64 get_ir_item_index(const Lexer *lex, String d)
 }
 
 
-static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *cursor)
+static Errcode parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *cursor)
 {
-    expect(src, cursor, "<");
+    TRY(expect(src, cursor, "<"));
     BNFToken expr_non_terminal = parse_non_terminal_id(src, cursor);
     if (get_ir_item_index(lex, expr_non_terminal.data) != -1)
     {
-        exit_with_error(1, "ERROR: <%.*s> already found, use '|' to define multiple productions for a non terminal\n", (int)expr_non_terminal.data.length, expr_non_terminal.data.data);
+        return_with_error(1, "ERROR: <%.*s> already found, use '|' to define multiple productions for a non terminal\n", (int)expr_non_terminal.data.length, expr_non_terminal.data.data);
     }
     if (!is_str(expr_non_terminal.data, make_string("S")))
     {
         lex->LR_items[lex->LR_items_count++] = expr_non_terminal.data;
     }
-    expect(src, cursor, ">");
+    TRY(expect(src, cursor, ">"));
     move_past_whitespace(src, cursor);
-    expect(src, cursor, ":=");
+    TRY(expect(src, cursor, ":="));
     move_past_whitespace(src, cursor);
 
 
@@ -199,7 +208,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
                 *cursor += 1;
                 parse_terminal(src, cursor);
                 prod_count += 1;
-                expect(src, cursor, "\'");
+                TRY(expect(src, cursor, "\'"));
                 move_past_whitespace(src, cursor);
             }
             else if (src[*cursor] == '<')
@@ -207,7 +216,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
                 *cursor += 1;
                 parse_non_terminal_id(src, cursor);
                 prod_count += 1;
-                expect(src, cursor, ">");
+                TRY(expect(src, cursor, ">"));
                 move_past_whitespace(src, cursor);
             }
             else if (src[*cursor] == '|')
@@ -218,7 +227,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
             }
             else
             {
-                exit_with_error(1, "ERROR: unexpected %c in bnf\n", src[*cursor]);
+                return_with_error(1, "ERROR: unexpected %c in bnf\n", src[*cursor]);
             }
         }
 
@@ -236,7 +245,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
                 *cursor += 1;
                 BNFToken terminal = parse_terminal(src, cursor);
                 expr.prod_tokens[expr.prod_count++] = terminal;
-                expect(src, cursor, "\'");
+                TRY(expect(src, cursor, "\'"));
                 move_past_whitespace(src, cursor);
             }
             else if (src[*cursor] == ';')
@@ -248,7 +257,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
                 *cursor += 1;
                 BNFToken non_terminal = parse_non_terminal_id(src, cursor);
                 expr.prod_tokens[expr.prod_count++] = non_terminal;
-                expect(src, cursor, ">");
+                TRY(expect(src, cursor, ">"));
                 move_past_whitespace(src, cursor);
             }
             else if (src[*cursor] == '|')
@@ -275,6 +284,7 @@ static void parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *c
 
     }
     move_past_whitespace(src, cursor);
+    return 0;
 }
 
 
@@ -754,6 +764,7 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
         {
             if (table[index].type == op.type)
             {
+                //TODO(Johan) improve using better error handling
                 printf("ERROR: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 printf("--Change ambiguous grammar\n");
                 fprint_BNF(stdout, meta_expr_table[index]);
@@ -1409,7 +1420,7 @@ static void set_first(Lexer *lex)
 
 
 
-static void parse_token(const char *src, Usize *cursor, Lexer *lex)
+static Errcode parse_token(const char *src, Usize *cursor, Lexer *lex)
 {
     String token_str = {};
     token_str.data = &src[*cursor];
@@ -1418,7 +1429,7 @@ static void parse_token(const char *src, Usize *cursor, Lexer *lex)
     {
         if (src[*cursor] == '\0')
         {
-            exit_with_error(1, "ERROR: failed to parse token\n");
+            return_with_error(1, "ERROR: failed to parse token\n");
         }
 
 
@@ -1430,42 +1441,42 @@ static void parse_token(const char *src, Usize *cursor, Lexer *lex)
 
     lex->LR_items[lex->LR_items_count++] = token_str;
     lex->terminals_count += 1;
-    
+    return 0; 
 }
 
 
-void parse_bnf_src(Lexer *lex, const char *src)
+Errcode parse_bnf_src(Lexer *lex, const char *src)
 {
     Usize cursor = 0;
     // parse tokens
     {
         move_past_whitespace(src, &cursor);
-        expect(src, &cursor, "TOKENS");
+        TRY(expect(src, &cursor, "TOKENS"));
         move_past_whitespace(src, &cursor);
         while (src[cursor] != ':')
         {
             move_past_whitespace(src, &cursor);
-            parse_token(src, &cursor, lex);
-            expect(src, &cursor, ";");
+            TRY(parse_token(src, &cursor, lex));
+            TRY(expect(src, &cursor, ";"));
             move_past_whitespace(src, &cursor);
         }
-        expect(src, &cursor, ":");
+        TRY(expect(src, &cursor, ":"));
     }
     // parse bnf
     {
         move_past_whitespace(src, &cursor);
-        expect(src, &cursor, "BNF");
+        TRY(expect(src, &cursor, "BNF"));
         move_past_whitespace(src, &cursor);
         while (src[cursor] != ':')
         {
             assert_always(lex->expr_count < ARRAY_COUNT(lex->exprs));
             move_past_whitespace(src, &cursor);
 
-            parse_BNFexpr_and_add_to_lexer(lex, src, &cursor);
-            expect(src, &cursor, ";");
+            TRY(parse_BNFexpr_and_add_to_lexer(lex, src, &cursor));
+            TRY(expect(src, &cursor, ";"));
             move_past_whitespace(src, &cursor);
         }
-        expect(src, &cursor, ":");
+        TRY(expect(src, &cursor, ":"));
     }
 
     Usize set_size = lex->LR_items_count;
@@ -1473,7 +1484,7 @@ void parse_bnf_src(Lexer *lex, const char *src)
 
     lex->first_sets = first;
     set_first(lex);
-
+    return 0;
 }
 
 
@@ -1577,7 +1588,11 @@ ParseTable *create_parse_table_from_bnf(const char *src)
     Lexer *lex = alloc(Lexer, 1);
     if (lex == nullptr) return nullptr;
 
-    parse_bnf_src(lex, src);
+    if (parse_bnf_src(lex, src))
+    {
+        free(lex);
+        return nullptr;
+    }
 
     State *state_list = alloc(State, 1024);
     if (state_list == nullptr)

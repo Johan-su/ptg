@@ -4,10 +4,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef uint8_t U8;
+typedef uint16_t U16;
+typedef uint32_t U32;
+typedef uint64_t U64;
+
+typedef size_t Usize;
+
+typedef int8_t I8;
+typedef int16_t I16;
+typedef int32_t I32;
+typedef int64_t I64;
 
 
-
-
+struct [[nodiscard]] Errcode
+{
+    int code;
+    operator int() const { return code; }
+    Errcode(int c): code(c) {}
+};
 
 #define assert_always(condition)                                                                    \
 do                                                                                                  \
@@ -52,17 +67,7 @@ static inline void *debug_calloc(size_t amount, size_t size, const char *file, i
 #define alloc(type, amount) (type *)calloc((amount), sizeof(type))
 #define alloc_non_zero(type, amount) (type *)malloc(sizeof(type) * (amount))
 
-typedef uint8_t U8;
-typedef uint16_t U16;
-typedef uint32_t U32;
-typedef uint64_t U64;
 
-typedef size_t Usize;
-
-typedef int8_t I8;
-typedef int16_t I16;
-typedef int32_t I32;
-typedef int64_t I64;
 
 
 
@@ -232,7 +237,7 @@ static const char *op_to_str(TableOperationType op)
 }
 
 ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count);
-void parse_bnf_src(Lexer *lex, const char *src);
+Errcode parse_bnf_src(Lexer *lex, const char *src);
 void create_all_substates(State *state_list, U32 *state_count, Lexer *lex);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
 
