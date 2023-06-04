@@ -15,20 +15,11 @@
 // TODO: predict required memory to parse list of tokens, if possible
 
 // TODO(Johan): make thread safe
-static void default_flush(Program_Context *context)
+static char g_msg_buffer[2048];
+const char *get_last_error()
 {
-    fprintf(stderr, "%.*s", (int)context->msg_buf_count, context->msg_buf);
-    context->msg_buf_count = 0;
+    return g_msg_buffer;
 }
-
-static char msg_buffer[4096];
-
-static Program_Context g_context = {
-    default_flush,
-    msg_buffer,
-    0,
-    sizeof(msg_buffer),
-};
 
 
 
@@ -49,21 +40,8 @@ static bool print_formated(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    int char_len = vsnprintf(g_context.msg_buf, g_context.msg_buf_count, format, args);
+    vsnprintf(g_msg_buffer, sizeof(g_msg_buffer), format, args);
     va_end(args);
-    if (char_len < 0)
-    {
-        return false;
-    }
-    if ((Usize)char_len > g_context.msg_buf_size)
-    {
-        g_context.msg_buf_count = g_context.msg_buf_size;
-    }
-    else
-    {
-        g_context.msg_buf_count = (Usize)char_len;
-    }
-    g_context.flush_func(&g_context);
 
     return true;
 }

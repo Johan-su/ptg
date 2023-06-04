@@ -68,18 +68,6 @@ static inline void *debug_calloc(size_t amount, size_t size, const char *file, i
 #define alloc_non_zero(type, amount) (type *)malloc(sizeof(type) * (amount))
 
 
-
-
-
-struct Program_Context
-{
-    void (*flush_func)(Program_Context *);
-    char *msg_buf;
-    Usize msg_buf_count;
-    Usize msg_buf_size;
-};
-
-
 struct String
 {
     const char *data;

@@ -59,4 +59,6 @@ PTG_DEFINE bool parse_bin(const ParseToken *token_list, U32 token_count, const U
 PTG_DEFINE U32 get_table_size(ParseTable *table);
 PTG_DEFINE void print_table(ParseTable *table);
 
+PTG_DEFINE const char *get_last_error();
+
 #endif
