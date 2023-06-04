@@ -86,8 +86,8 @@ do \
 #define TRY(function) \
 do \
 { \
-    auto temp = (function); \
-    if (temp) return temp; \
+    auto temp____ = (function); \
+    if (temp____) return temp____; \
 } while(0)
 
 
@@ -1082,7 +1082,7 @@ static String get_string_from_lr(const ParseTable *table, I64 lr)
 
 
 
-static bool print_formated_error(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, const char *format, ...)
+static bool print_parse_error(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, const char *format, ...)
 {
     if (err_msg_out == nullptr || *err_msg_size <= 0)
     {
@@ -1109,7 +1109,7 @@ static bool print_formated_error(char *err_msg_out, Usize *err_msg_size, Usize *
 }
 
 
-static bool print_formated_error_string(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, String str)
+static bool print_parse_error_string(char *err_msg_out, Usize *err_msg_size, Usize *err_str_index, String str)
 {
     if (err_msg_out == nullptr || *err_msg_size <= 0)
     {
@@ -1190,13 +1190,13 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
                 if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
 
-                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
-                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "lookahead_ir_index: %lld, state: %u\n", lookahead_lr_index, state_stack[state_count]);
+                    print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
+                    print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "lookahead_ir_index: %lld, state: %u\n", lookahead_lr_index, state_stack[state_count]);
                 }
-                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected ");
-                print_formated_error_string(err_msg_out, &msg_buf_size, &err_str_index, String {token_list[index].data, token_list[index].length, token_list[index].stride});
-                print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, " token");
-                // print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected %.*s token\n", (int)token_list[index].length, token_list[index].data);
+                print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected ");
+                print_parse_error_string(err_msg_out, &msg_buf_size, &err_str_index, String {token_list[index].data, token_list[index].length, token_list[index].stride});
+                print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, " token");
+                // print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "Unexpected %.*s token\n", (int)token_list[index].length, token_list[index].data);
                 active = false;
                 succeded_parsing = false;
             } break;
@@ -1204,7 +1204,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
-                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
+                    print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
                 assert_debug(symbol_count > 0);
                 symbol_stack[--symbol_count] = lookahead_lr_index;
@@ -1223,7 +1223,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
-                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
+                    print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "%s, %u\n", op_to_str(op.type), op.arg);
                 }
                 assert_debug(op.arg >= 0 && op.arg < table->expr_count);
 
@@ -1264,7 +1264,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
                         String cur = get_string_from_lr(table, lr_item);
 
                         // change to better output
-                        print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "Expected %.*s but got %.*s\n", (int)prod.length, prod.data, (int)cur.length, cur.data);
+                        print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "Expected %.*s but got %.*s\n", (int)prod.length, prod.data, (int)cur.length, cur.data);
                         active = false;
                         succeded_parsing = false;
                         break;
@@ -1301,7 +1301,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
             {
                 if ((flags & PRINT_EVERY_PARSE_STEP_FLAG) == PRINT_EVERY_PARSE_STEP_FLAG)
                 {
-                    print_formated_error(err_msg_out, &msg_buf_size, &err_str_index, "ACCEPT\n");
+                    print_parse_error(err_msg_out, &msg_buf_size, &err_str_index, "ACCEPT\n");
                 }
                 active = false;
                 succeded_parsing = true;
