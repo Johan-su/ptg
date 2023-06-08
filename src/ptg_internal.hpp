@@ -36,6 +36,30 @@ do                                                                              
 } while (0)
 
 
+#define exit_with_error(exit_code, format, ...) \
+do \
+{ \
+    print_formated(format, __VA_ARGS__); \
+    exit(exit_code); \
+} while (0)
+
+#define return_with_error(exit_code, format, ...) \
+do \
+{ \
+    print_formated(format, __VA_ARGS__); \
+    return (exit_code); \
+} while (0)
+
+#define TRY(function) \
+do \
+{ \
+    auto temp____ = (function); \
+    if (temp____) return temp____; \
+} while(0)
+
+
+
+
 
 #ifdef _DEBUG
 #define assert_debug(condition) assert_always(condition)
@@ -230,3 +254,4 @@ void create_all_substates(State *state_list, U32 *state_count, Lexer *lex);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
 
 void fprint_state(FILE *stream, State *state);
+bool print_formated(const char *format, ...);
