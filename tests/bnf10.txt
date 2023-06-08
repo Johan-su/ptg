@@ -1,0 +1,34 @@
+TOKENS
++;
+-;
+*;
+/;
+^;
+=;
+(;
+);
+Number;
+Id;
+Sep;
+End;
+:
+BNF
+<S> := <Construction'>*;
+<Construction'> := <Construction> 'Sep'
+<Construction> := <FuncDecl> | <VarDecl> | <E> | ;
+<FuncDecl> := 'Id' '('Id')' '=' <E>;
+<VarDecl> := 'Id' '=' <E>;
+<E> := '('<E>')' | 
+        'Number' | 
+        'Id' | 
+        <FuncCall> | 
+        '-'<E> | 
+        '+'<E> | 
+        <E> '^' <E> |
+        <E> '/' <E> | 
+        <E> '*' <E> | 
+        <E> '-' <E> | 
+        <E> '+' <E>;
+<FuncCall> := 'Id''('<E>')';
+:
+
