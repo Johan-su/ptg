@@ -3,7 +3,28 @@
 
 #include "ptg_internal.hpp"
 
+struct FirstSet
+{
+    Usize terminal_count;
+    String terminals[128];
+};
+
+struct Lexer
+{
+    BNFExpression exprs[2048];
+    U32 expr_count;
+
+    U32 terminals_count;
+    U32 LR_items_count;
+    String LR_items[128];
+
+    FirstSet *first_sets;
+};
+
+
 I64 get_ir_item_index(const Lexer *lex, String d);
+Errcode parse_bnf_src(Lexer *lex, const char *src);
+
 
 #endif // PTG_LEXER_HPP
 
