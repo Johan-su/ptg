@@ -5,8 +5,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-#define PTG_LEXER_IMPLMENTATION
-#include "ptg_lexer.hpp"
+
 
 // https://cs.stackexchange.com/questions/152523/how-is-the-lookahead-for-an-lr1-automaton-computed
 // https://fileadmin.cs.lth.se/cs/Education/EDAN65/2021/lectures/L06A.pdf
@@ -180,7 +179,7 @@ static bool is_expr_already_expanded(State *state, BNFExpression *expr)
 
 
 
-static void push_all_expressions_from_non_terminal_production(State *state, Lexer *lex)
+static void push_all_expressions_from_non_terminal_production(State *state, Grammar *lex)
 {
     for (Usize k = 0; k < state->expr_count; ++k)
     {
@@ -293,7 +292,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, Lexe
 
 static State g_active_substate = {};
 
-static void create_substates_from_state(State *state, State *state_list, U32 *state_list_count, Lexer *lex)
+static void create_substates_from_state(State *state, State *state_list, U32 *state_list_count, Grammar *lex)
 {
     assert_always(state->expr_count < ARRAY_COUNT(state->exprs));
     bool *check_list = alloc(bool, state->expr_count);
@@ -493,7 +492,7 @@ void print_table(ParseTable *table)
 
 
 
-static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_expr_table, Usize table_size,
+static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_expr_table, Usize table_size,
     BNFExpression *expr, I64 look_ahead_index, Usize state_id, TableOperation op)
 {
     assert_always(look_ahead_index != -1);
@@ -588,7 +587,7 @@ static void table_set(Lexer *lex, TableOperation *table, BNFExpression **meta_ex
 
 #define PADDING_FOR_ALIGNMENT(ptr, type) ((alignof(type) - ((ptr) % alignof(type))) % alignof(type))
 
-ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count)
+ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 state_count)
 {
     Usize table_size = state_count * lex->LR_items_count;
     BNFExpression **meta_expr_table = alloc(BNFExpression *, table_size);
@@ -1080,7 +1079,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
 }
 
 
-void create_all_substates(State *state_list, U32 *state_count, Lexer *lex)
+void create_all_substates(State *state_list, U32 *state_count, Grammar *lex)
 {
     *state_count = 0;
     State *state = &state_list[0];
@@ -1185,21 +1184,41 @@ ParseTable *create_parse_table_from_bnf(const char *src)
         return nullptr;
     }
 
-    State *state_list = alloc(State, 1024);
-    if (state_list == nullptr)
+
+    Grammar *gram = alloc(Grammar, 1);
+    if (gram == nullptr)
     {
         free(lex);
         return nullptr;
     }
 
-    U32 state_count;
-    create_all_substates(state_list, &state_count, lex);
-    ParseTable *table = create_parse_table_from_states(lex, state_list, state_count); 
+    if (grammar_from_lexer(gram, lex))
+    {
+        free(gram);
+        free(lex);
+        return nullptr;
+    }
 
-    free(lex);
+    State *state_list = alloc(State, 1024);
+    if (state_list == nullptr)
+    {
+        free(gram);
+        free(lex);
+        return nullptr;
+    }
+
+    U32 state_count;
+    create_all_substates(state_list, &state_count, gram);
+    ParseTable *table = create_parse_table_from_states(gram, state_list, state_count); 
+
     free(state_list);
+    free(gram);
+    free(lex);
     return table;
 }
+
+
+#include "ptg_lexer.cpp"
 
 
 bool parse(const ParseToken *token_list, U32 token_count, const ParseTable *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size)

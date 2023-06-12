@@ -198,7 +198,7 @@ static Usize str_len(const char *str)
 
 static String make_string(const char *cstr)
 {
-    return String {cstr, str_len(cstr), 1};
+    return String {.data = cstr, .length = str_len(cstr), .stride = 1};
 }
 
 
@@ -231,10 +231,59 @@ static const char *op_to_str(TableOperationType op)
     return nullptr;
 }
 
-#include "ptg_lexer.hpp"
+struct FirstSet
+{
+    Usize terminal_count;
+    String terminals[128];
+};
 
-ParseTable *create_parse_table_from_states(Lexer *lex, State *state_list, U32 state_count);
-void create_all_substates(State *state_list, U32 *state_count, Lexer *lex);
+struct Grammar
+{
+    BNFExpression exprs[2048];
+    U32 expr_count;
+
+    U32 terminals_count;
+    U32 LR_items_count;
+    String LR_items[128];
+
+    FirstSet *first_sets;
+};
+
+
+enum class TOKEN_KIND
+{
+    INVALID,
+    TERMINAL_ID,
+    NON_TERMINAL_ID,
+    ASSIGNMENT,
+    PLUS,
+    STAR,
+    QUESTION,
+    OR,
+    END,
+};
+
+struct Lex_Token
+{
+    TOKEN_KIND kind;
+    String str;
+};
+
+
+struct Lexer
+{
+    Usize count;
+    Lex_Token tokens[];
+};
+
+
+
+I64 get_ir_item_index(const Grammar *lex, String d);
+Errcode parse_bnf_src(Lexer *lex, const char *src);
+Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex);
+
+ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 state_count);
+void create_all_substates(State *state_list, U32 *state_count, Grammar *lex);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
 
 void fprint_state(FILE *stream, State *state);

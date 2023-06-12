@@ -73,7 +73,7 @@ int main(void)
     // FILE *f = fopen("input.dot", "w");
     // write_states_as_graph(f, state_list, state_count);
     // fclose(f);
-    // print_table(table, lexer, state_count);
+    // print_table(table, Grammar, state_count);
 
     assert_always(!parse_str("", table));
     assert_always(!parse_str("abcd", table));

@@ -1,38 +1,8 @@
-#ifndef PTG_LEXER_HPP
-#define PTG_LEXER_HPP
-
 #include "ptg_internal.hpp"
 
-struct FirstSet
-{
-    Usize terminal_count;
-    String terminals[128];
-};
-
-struct Lexer
-{
-    BNFExpression exprs[2048];
-    U32 expr_count;
-
-    U32 terminals_count;
-    U32 LR_items_count;
-    String LR_items[128];
-
-    FirstSet *first_sets;
-};
 
 
-I64 get_ir_item_index(const Lexer *lex, String d);
-Errcode parse_bnf_src(Lexer *lex, const char *src);
-
-
-#endif // PTG_LEXER_HPP
-
-#ifdef PTG_LEXER_IMPLMENTATION
-#undef PTG_LEXER_IMPLMENTATION 
-
-
-I64 get_ir_item_index(const Lexer *lex, String d)
+I64 get_ir_item_index(const Grammar *lex, String d)
 {
     for (I64 i = 0; i < (I64)lex->LR_items_count; ++i)
     {
@@ -101,10 +71,10 @@ static BNFToken parse_non_terminal_id(const char *src, Usize *cursor)
     }
 
     assert_debug(id.length > 0);
-    BNFToken token = {};
-    token.data = id;
-    token.type = TokenType::NONTERMINAL;
-    return token;
+    BNFToken Lex_Token = {};
+    Lex_Token.data = id;
+    Lex_Token.type = TokenType::NONTERMINAL;
+    return Lex_Token;
 }
 
 
@@ -122,14 +92,16 @@ static BNFToken parse_terminal(const char *src, Usize *cursor)
         id.length += 1;
     }
 
-    BNFToken token = {};
-    token.data = id;
-    token.type = TokenType::TERMINAL;
-    return token;
+    BNFToken Lex_Token = {};
+    Lex_Token.data = id;
+    Lex_Token.type = TokenType::TERMINAL;
+    return Lex_Token;
 }
 
 
-static Errcode parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize *cursor)
+
+
+static Errcode parse_BNFexpr_and_add_to_grammar(Grammar *lex, const char *src, Usize *cursor)
 {
     TRY(expect(src, cursor, "<"));
     BNFToken expr_non_terminal = parse_non_terminal_id(src, cursor);
@@ -243,7 +215,7 @@ static Errcode parse_BNFexpr_and_add_to_lexer(Lexer *lex, const char *src, Usize
 }
 
 
-static Errcode parse_token(const char *src, Usize *cursor, Lexer *lex)
+static Errcode parse_token(const char *src, Usize *cursor, Grammar *lex)
 {
     String token_str = {};
     token_str.data = &src[*cursor];
@@ -252,7 +224,7 @@ static Errcode parse_token(const char *src, Usize *cursor, Lexer *lex)
     {
         if (src[*cursor] == '\0')
         {
-            return_with_error(1, "ERROR: failed to parse token\n");
+            return_with_error(1, "ERROR: failed to parse Lex_Token\n");
         }
 
 
@@ -286,7 +258,8 @@ static void add_element_to_first_set(FirstSet *first_array, I64 lr_index, String
 }
 
 
-static void set_first(Lexer *lex)
+
+static void set_first(Grammar *lex)
 {
     Usize stack_size = 2048;
     String *non_terminal_stack = alloc(String, stack_size);
@@ -352,55 +325,190 @@ static void set_first(Lexer *lex)
     free(non_terminal_stack);
 }
 
+Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
+{
+    assert_always(false);
+
+    return 0;
+}
+
+
+static Errcode parse_non_terminal_add_to_lexer(Lexer *lex, const char *src, Usize *cursor)
+{
+    Lex_Token non_terminal = {
+        .kind = TOKEN_KIND::NON_TERMINAL_ID,
+        .str = {.data = &src[*cursor], .length = 0, .stride = 1},
+    };
+
+    if (src[*cursor] == '>')
+    {
+        return_with_error(1, "Can not have empty non terminal identifier\n");
+    }
+
+    while (src[*cursor] != '>')
+    {
+        *cursor += 1;
+        non_terminal.str.length += 1;
+    }
+    lex->tokens[lex->count++] = non_terminal;
+    return 0;
+}
+
 
 Errcode parse_bnf_src(Lexer *lex, const char *src)
 {
     Usize cursor = 0;
-    // parse tokens
+    // Lex_Token parsing
     {
         move_past_whitespace(src, &cursor);
         TRY(expect(src, &cursor, "TOKENS"));
         move_past_whitespace(src, &cursor);
         while (src[cursor] != ':')
         {
-            move_past_whitespace(src, &cursor);
-            TRY(parse_token(src, &cursor, lex));
-            TRY(expect(src, &cursor, ";"));
+            if (src[cursor] == ';')
+            {
+                // handle if Lex_Token does not have a name
+                return_with_error(1, "Can not have empty Token identifier\n");
+            }
+
+
+            Lex_Token Lex_Token = {
+                .kind = TOKEN_KIND::TERMINAL_ID,
+                .str = {.data = &src[cursor], .length = 0, .stride = 1},
+            };
+            Usize i = 0;
+            for (; src[cursor] != ';'; ++i)
+            {
+                if (src[cursor] == '\0') return_with_error(1, "Unexpected end of string");
+
+                cursor += 1;
+            }
+            Lex_Token.str.length = i;
+            lex->tokens[lex->count++] = Lex_Token;
+            cursor += 1;
             move_past_whitespace(src, &cursor);
         }
-        TRY(expect(src, &cursor, ":"));
-    }
-    // parse bnf
-    {
+        cursor += 1;
         move_past_whitespace(src, &cursor);
+    }
+
+
+    // Expression parsing
+    {
         TRY(expect(src, &cursor, "BNF"));
         move_past_whitespace(src, &cursor);
+
         while (src[cursor] != ':')
         {
-            assert_always(lex->expr_count < ARRAY_COUNT(lex->exprs));
+            TRY(expect(src, &cursor, "<"));
+
+            TRY(parse_non_terminal_add_to_lexer(lex, src, &cursor));
+            // expect '>'
+            cursor += 1;
             move_past_whitespace(src, &cursor);
 
-            TRY(parse_BNFexpr_and_add_to_lexer(lex, src, &cursor));
-            TRY(expect(src, &cursor, ";"));
+            {
+                Lex_Token assign = {
+                    .kind = TOKEN_KIND::ASSIGNMENT,
+                    .str = {.data = &src[cursor], .length = 2, .stride = 1}
+                };
+                if (src[cursor] != ':')
+                {
+                    return_with_error(1, "Expected :\n");
+                }
+                cursor += 1;
+                if (src[cursor] != '=')
+                {
+                    return_with_error(1, "Expected =\n");
+                }
+                lex->tokens[lex->count++] = assign;
+            }
+            cursor += 1;
+            move_past_whitespace(src, &cursor);
+
+            while (src[cursor] != ';')
+            {
+                switch (src[cursor])
+                {
+                    case '<':
+                    {
+                        cursor += 1;
+                        TRY(parse_non_terminal_add_to_lexer(lex, src, &cursor));
+                        // expect '>'
+                        cursor += 1;
+                        move_past_whitespace(src, &cursor);
+                    } break;
+                    case '\'':
+                    {
+                        cursor += 1;
+                        Lex_Token terminal = {
+                            .kind = TOKEN_KIND::TERMINAL_ID,
+                            .str = {.data = &src[cursor], .length = 0, .stride = 1},
+                        };
+
+                        if (src[cursor] == '\'')
+                        {
+                            return_with_error(1, "Can not have empty terminal identifier\n");
+                        }
+
+                        while (src[cursor] != '\'')
+                        {
+                            cursor += 1;
+                            terminal.str.length += 1;
+                        }
+                        lex->tokens[lex->count++] = terminal;
+                        cursor += 1;
+                        move_past_whitespace(src, &cursor);
+                    } break;
+                    case '|':
+                    {
+                        lex->tokens[lex->count++] = Lex_Token {
+                            .kind = TOKEN_KIND::OR,
+                            .str = {.data = &src[cursor], .length = 1, .stride = 1},
+                        };
+                        cursor += 1;
+                        move_past_whitespace(src, &cursor);
+                    } break;
+                    case '+':
+                    {
+                        lex->tokens[lex->count++] = Lex_Token {
+                            .kind = TOKEN_KIND::PLUS,
+                            .str = {.data = &src[cursor], .length = 1, .stride = 1},
+                        };
+                        cursor += 1;
+                        move_past_whitespace(src, &cursor);
+                    } break;
+                    case '*':
+                    {
+                        lex->tokens[lex->count++] = Lex_Token {
+                            .kind = TOKEN_KIND::STAR,
+                            .str = {.data = &src[cursor], .length = 1, .stride = 1},
+                        };
+                        cursor += 1;
+                        move_past_whitespace(src, &cursor);
+                    } break;
+                    case '?':
+                    {
+                        lex->tokens[lex->count++] = Lex_Token {
+                            .kind = TOKEN_KIND::QUESTION,
+                            .str = {.data = &src[cursor], .length = 1, .stride = 1},
+                        };
+                        cursor += 1;
+                        move_past_whitespace(src, &cursor);
+                    } break;
+                    default:
+                    {
+                        return_with_error(1, "Unexpected %c\n", src[cursor]);
+                    } break;
+                }
+            }
+            cursor += 1;
             move_past_whitespace(src, &cursor);
         }
-        TRY(expect(src, &cursor, ":"));
+        lex->tokens[lex->count++] = {
+            .kind = TOKEN_KIND::END,
+            .str = {.data = nullptr, .length = 0, .stride = 0},
+        };
     }
-
-    Usize set_size = lex->LR_items_count;
-    FirstSet *first = alloc(FirstSet, set_size);
-
-    lex->first_sets = first;
-    set_first(lex);
     return 0;
 }
-
-
-
-
-
-
-
-
-
-#endif // PTG_LEXER_IMPLMENTATION
