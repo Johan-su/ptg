@@ -135,9 +135,10 @@ struct ParseTable
     U8 data[];
 };
 
-enum class TokenType
+enum class TokenType : U8
 {
     INVALID,
+    EMPTY,
     TERMINAL,
     NONTERMINAL,
 };
@@ -145,17 +146,19 @@ enum class TokenType
 struct BNFToken
 {
     TokenType type; 
-    String data;
+    I32 lr_item;
 };
 
 struct BNFExpression
 {
     BNFToken non_terminal;
     U32 dot;
-    BNFToken look_ahead;
 
     U32 prod_count;
     BNFToken *prod_tokens;
+
+    U32 look_ahead_count;
+    BNFToken look_aheads[128];
 };
 
 
@@ -231,10 +234,11 @@ static const char *op_to_str(TableOperationType op)
     return nullptr;
 }
 
+
 struct FirstSet
 {
     Usize terminal_count;
-    String terminals[128];
+    BNFToken terminals[128];
 };
 
 struct Grammar
@@ -244,7 +248,8 @@ struct Grammar
 
     U32 terminals_count;
     U32 LR_items_count;
-    String LR_items[128];
+    BNFToken LR_items[128];
+    String LR_items_str[128];
 
     FirstSet *first_sets;
 };
@@ -256,9 +261,6 @@ enum class TOKEN_KIND
     TERMINAL_ID,
     NON_TERMINAL_ID,
     ASSIGNMENT,
-    PLUS,
-    STAR,
-    QUESTION,
     OR,
     END,
 };
@@ -273,12 +275,12 @@ struct Lex_Token
 struct Lexer
 {
     Usize count;
-    Lex_Token tokens[];
+    Lex_Token tokens[1024];
 };
 
 
 
-I64 get_ir_item_index(const Grammar *lex, String d);
+I32 get_ir_item_index(const Grammar *lex, String d);
 Errcode parse_bnf_src(Lexer *lex, const char *src);
 Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex);
 

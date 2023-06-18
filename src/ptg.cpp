@@ -39,13 +39,14 @@ bool print_formated(const char *format, ...)
 }
 
 
-static void fprint_BNF(FILE *stream, BNFExpression *expr)
+static void fprint_BNF(FILE *stream, const BNFExpression *expr, const Grammar *gram)
 {
-    fprintf(stream, "<%.*s> :=", (int)expr->non_terminal.data.length, expr->non_terminal.data.data);
-    
+    String non_terminal_str = gram->LR_items_str[expr->non_terminal.lr_item];
+
+    assert_always(non_terminal_str.stride == 1);
+    fprintf(stream, "<%.*s> :=", (int)(non_terminal_str.length), non_terminal_str.data);
     for (Usize i = 0; i < expr->prod_count; ++i)
     {
-        String expr_str = expr->prod_tokens[i].data;
 
         if (i == expr->dot)
         {
@@ -56,8 +57,9 @@ static void fprint_BNF(FILE *stream, BNFExpression *expr)
             fprintf(stream, " ");
         }
 
-        if (expr_str.length > 0)
+        if (expr->prod_tokens[i].lr_item >= 0)
         {
+            String expr_str = gram->LR_items_str[expr->prod_tokens[i].lr_item];
             if (expr->prod_tokens[i].type == TokenType::TERMINAL)
             {
                 fprintf(stream, "\'%.*s\'", (int)expr_str.length, expr_str.data);
@@ -76,7 +78,21 @@ static void fprint_BNF(FILE *stream, BNFExpression *expr)
     {
         fprintf(stream, " ?");
     }
-    fprintf(stream, " [%.*s]", (int)expr->look_ahead.data.length, expr->look_ahead.data.data);
+
+    fprintf(stream, " [");
+
+    if (expr->look_ahead_count > 0)
+    {
+        for (Usize i = 0; i < expr->look_ahead_count - 1; ++i)
+        {
+            String look_str = gram->LR_items_str[expr->look_aheads[i].lr_item];
+            assert_always(look_str.stride == 1);
+            fprintf(stream, "%.*s,", (int)look_str.length, look_str.data);
+        }
+        String look_str = gram->LR_items_str[expr->look_aheads[expr->prod_count - 1].lr_item];
+        fprintf(stream, "%.*s", (int)look_str.length, look_str.data);
+    }
+    fprintf(stream, "]\n");
 }
 
 
@@ -87,17 +103,22 @@ static void fprint_BNF(FILE *stream, BNFExpression *expr)
 static bool is_BNFExpression(const BNFExpression *b0, const BNFExpression *b1)
 {
     if (b0->dot != b1->dot) return false;
-    if (b0->look_ahead.type != b1->look_ahead.type) return false;
+    if (b0->look_ahead_count != b1->look_ahead_count) return false;
     if (b0->non_terminal.type != b1->non_terminal.type) return false;
+    if (b0->non_terminal.lr_item != b1->non_terminal.lr_item) return false;
     if (b0->prod_count != b1->prod_count) return false;
-    if (!is_str(b0->look_ahead.data, b1->look_ahead.data)) return false;
-    if (!is_str(b0->non_terminal.data, b1->non_terminal.data)) return false;
+
+    for (Usize i = 0; i < b0->look_ahead_count; ++i)
+    {
+        if (b0->look_aheads[i].type != b1->look_aheads[i].type) return false;
+        if (b0->look_aheads[i].lr_item != b1->look_aheads[i].lr_item) return false;
+    }
 
 
     for (Usize i = 0; i < b0->prod_count; ++i)
     {
         if (b0->prod_tokens[i].type != b1->prod_tokens[i].type) return false;
-        if(!is_str(b0->prod_tokens[i].data, b1->prod_tokens[i].data)) return false;
+        if (b0->prod_tokens[i].lr_item != b1->prod_tokens[i].lr_item) return false;
     }
 
     return true;
@@ -107,14 +128,13 @@ static bool is_BNFExpression(const BNFExpression *b0, const BNFExpression *b1)
 static bool is_BNFExpression_ignore_dot_lookahead(const BNFExpression *b0, const BNFExpression *b1)
 {
     if (b0->non_terminal.type != b1->non_terminal.type) return false;
+    if (b0->non_terminal.lr_item != b1->non_terminal.lr_item) return false;
     if (b0->prod_count != b1->prod_count) return false;
-    if (!is_str(b0->non_terminal.data, b1->non_terminal.data)) return false;
-
 
     for (Usize i = 0; i < b0->prod_count; ++i)
     {
         if (b0->prod_tokens[i].type != b1->prod_tokens[i].type) return false;
-        if(!is_str(b0->prod_tokens[i].data, b1->prod_tokens[i].data)) return false;
+        if (b0->prod_tokens[i].lr_item != b1->prod_tokens[i].lr_item) return false;
     }
 
     return true;
@@ -141,7 +161,7 @@ static bool is_state(State *s0, State *s1)
 }
 
 
-void fprint_state(FILE *stream, State *state)
+void fprint_state(FILE *stream, State *state, const Grammar *gram)
 {
     for (Usize j = 0; j < state->expr_count; ++j)
     {
@@ -149,7 +169,7 @@ void fprint_state(FILE *stream, State *state)
         State *expr_ptr = state->edges[j];
  
         
-        fprint_BNF(stream, expr);
+        fprint_BNF(stream, expr, gram);
 
     
         if (expr_ptr != nullptr)
@@ -179,6 +199,7 @@ static bool is_expr_already_expanded(State *state, BNFExpression *expr)
 
 
 
+
 static void push_all_expressions_from_non_terminal_production(State *state, Grammar *lex)
 {
     for (Usize k = 0; k < state->expr_count; ++k)
@@ -196,19 +217,19 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
         // if (rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1].type != TokenType::INVALID)
         if (rule_expand_expr->dot + 1 < rule_expand_expr->prod_count)
         {
-            I64 lr_index = get_ir_item_index(lex, rule_expand_expr->prod_tokens[rule_expand_expr->dot + 1].data);
+            I64 lr_index = rule_expand_expr->prod_tokens[rule_expand_expr->dot + 1].lr_item;
             assert_always(lr_index != -1);
 
             for (Usize i = 0; i < lex->expr_count; ++i)
             {
-                if (!is_str(lex->exprs[i].non_terminal.data, rule_to_expand.data)) continue;
+                if (lex->exprs[i].non_terminal.lr_item != rule_to_expand.lr_item) continue;
 
 
                 bool produces_empty_set = false;
                 for (Usize j = 0; j < lex->first_sets[lr_index].terminal_count; ++j)
                 {
-                    String terminal = lex->first_sets[lr_index].terminals[j];
-                    if (terminal.length == 0)
+                    BNFToken terminal = lex->first_sets[lr_index].terminals[j];
+                    if (terminal.type == TokenType::EMPTY)
                     {
                         produces_empty_set = true;
                         break;
@@ -222,11 +243,11 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
                         BNFExpression expr = lex->exprs[i];
 
                         BNFToken terminal = {};
-                        terminal.data = lex->first_sets[lr_index].terminals[j];
+                        terminal.lr_item = lex->first_sets[lr_index].terminals[j].lr_item;
                         terminal.type = TokenType::TERMINAL;
 
-                        expr.look_ahead = terminal;
 
+                        expr.look_aheads[expr.look_ahead_count++] = terminal;
                         
 
                         if (!is_expr_already_expanded(state, &expr))
@@ -236,7 +257,10 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
                     }
                     {
                         BNFExpression expr = lex->exprs[i];
-                        expr.look_ahead = rule_expand_expr->look_ahead; 
+                        for (Usize l = 0; l < rule_expand_expr->look_ahead_count; ++l)
+                        {
+                            expr.look_aheads[expr.look_ahead_count++] = rule_expand_expr->look_aheads[l]; 
+                        }
                         if (!is_expr_already_expanded(state, &expr)) 
                         {
                             state->exprs[state->expr_count++] = expr;
@@ -250,10 +274,12 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
                         BNFExpression expr = lex->exprs[i];
 
                         BNFToken terminal = {};
-                        terminal.data = lex->first_sets[lr_index].terminals[j];
+                        terminal.lr_item = lex->first_sets[lr_index].terminals[j].lr_item;
                         terminal.type = TokenType::TERMINAL;
 
-                        expr.look_ahead = terminal;
+
+                        expr.look_aheads[expr.look_ahead_count++] = terminal;
+                        
 
                         if (!is_expr_already_expanded(state, &expr))
                         {
@@ -267,13 +293,19 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
         }
         else
         {
-            assert_always(rule_expand_expr->look_ahead.type != TokenType::INVALID);
+            for (Usize i = 0; i < rule_expand_expr->look_ahead_count; ++i)
+            {
+                assert_always(rule_expand_expr->look_aheads[i].type != TokenType::INVALID);
+            }
             for (Usize i = 0; i < lex->expr_count; ++i)
             {
-                if (!is_str(lex->exprs[i].non_terminal.data, rule_to_expand.data)) continue;
+                if (lex->exprs[i].non_terminal.lr_item != rule_to_expand.lr_item) continue;
 
                 BNFExpression expr = lex->exprs[i];
-                expr.look_ahead = rule_expand_expr->look_ahead; 
+                for (Usize l = 0; l < rule_expand_expr->look_ahead_count; ++l)
+                {
+                    expr.look_aheads[expr.look_ahead_count++] = rule_expand_expr->look_aheads[l];
+                }
                 if (!is_expr_already_expanded(state, &expr)) 
                 {
                     state->exprs[state->expr_count++] = expr;
@@ -299,7 +331,7 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
 
     for (Usize i = 0; i < state->expr_count; ++i)
     {
-        if (state->exprs[i].non_terminal.data.length == 0) continue;
+        if (state->exprs[i].non_terminal.type == TokenType::EMPTY) continue;
 
         BNFExpression active_expr = state->exprs[i];
 
@@ -316,13 +348,12 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
             // if (expr->prod_tokens[expr->dot].type == TokenType::INVALID) continue;
             if (expr->dot >= expr->prod_count ||
                 active_expr.dot >= active_expr.prod_count ||
-                !is_str(active_expr.prod_tokens[active_expr.dot].data, expr->prod_tokens[expr->dot].data))
+                active_expr.prod_tokens[active_expr.dot].lr_item != expr->prod_tokens[expr->dot].lr_item)
                 {
                     continue;
-
                 }
             // skip shifting End token as it is the end token and means the parsing completed successfully
-            if (is_str(expr->prod_tokens[expr->dot].data, lex->LR_items[lex->terminals_count - 1])) continue;
+            if (expr->prod_tokens[expr->dot].lr_item == (I32)(lex->terminals_count - 1)) continue;
 
             active_substate->creation_token = active_expr.prod_tokens[active_expr.dot];
 
@@ -372,7 +403,7 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
             {
                 
                 if (state->exprs[k].dot < state->exprs[k].prod_count &&
-                    is_str(active_substate->creation_token.data, state->exprs[k].prod_tokens[state->exprs[k].dot].data))
+                    active_substate->creation_token.lr_item == state->exprs[k].prod_tokens[state->exprs[k].dot].lr_item)
                 {
                     state->edges[k] = state_to_point_to; 
                 }
@@ -385,52 +416,53 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
 
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count)
 {
-    fprintf(f, "digraph G {\n");
+    assert_always(false);
+    // fprintf(f, "digraph G {\n");
 
-    for (Usize i = 0; i < state_count; ++i)
-    {
-        State *state = &state_list[i];
-        fprintf(f, "n%u [label=\"", state->state_id);
-        fprintf(f, "State %u\n", state->state_id);
-        fprint_state(f, state);
-        fprintf(f, "\"];\n");
-        for (Usize j = 0; j < state->expr_count; ++j)
-        {
-            // BNFExpression *expr = &state->exprs[j];
-            State *edge = state->edges[j];
-            if (edge == nullptr)
-            {
-                continue;
-            }
+    // for (Usize i = 0; i < state_count; ++i)
+    // {
+    //     State *state = &state_list[i];
+    //     fprintf(f, "n%u [label=\"", state->state_id);
+    //     fprintf(f, "State %u\n", state->state_id);
+    //     fprint_state(f, state);
+    //     fprintf(f, "\"];\n");
+    //     for (Usize j = 0; j < state->expr_count; ++j)
+    //     {
+    //         // BNFExpression *expr = &state->exprs[j];
+    //         State *edge = state->edges[j];
+    //         if (edge == nullptr)
+    //         {
+    //             continue;
+    //         }
 
-            for (I64 k = (I64)j - 1; k >= 0; --k)
-            {
-                if (edge == state->edges[k])
-                {
-                    goto continue_outer;
-                }
-            }
+    //         for (I64 k = (I64)j - 1; k >= 0; --k)
+    //         {
+    //             if (edge == state->edges[k])
+    //             {
+    //                 goto continue_outer;
+    //             }
+    //         }
 
-            fprintf(f, "n%u -> n%u", state->state_id, edge->state_id);
-            if (edge->creation_token.type == TokenType::NONTERMINAL)
-            {
-                fprintf(f, " [label=\"%.*s\"];\n", 
-                    (int)edge->creation_token.data.length, edge->creation_token.data.data);
-            }
-            else if (edge->creation_token.type == TokenType::TERMINAL)
-            {
-                fprintf(f, " [label=\"\'%.*s\'\"];\n", 
-                    (int)edge->creation_token.data.length, edge->creation_token.data.data);
-            }
-            else
-            {
-                assert_always(false);
-            }
+    //         fprintf(f, "n%u -> n%u", state->state_id, edge->state_id);
+    //         if (edge->creation_token.type == TokenType::NONTERMINAL)
+    //         {
+    //             fprintf(f, " [label=\"%.*s\"];\n", 
+    //                 (int)edge->creation_token.data.length, edge->creation_token.data.data);
+    //         }
+    //         else if (edge->creation_token.type == TokenType::TERMINAL)
+    //         {
+    //             fprintf(f, " [label=\"\'%.*s\'\"];\n", 
+    //                 (int)edge->creation_token.data.length, edge->creation_token.data.data);
+    //         }
+    //         else
+    //         {
+    //             assert_always(false);
+    //         }
 
-            continue_outer:;
-        }
-    }
-    fprintf(f, "}\n");
+    //         continue_outer:;
+    //     }
+    // }
+    // fprintf(f, "}\n");
 }
 
 
@@ -514,62 +546,64 @@ static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_
                 //TODO(Johan) improve using better error handling
                 printf("ERROR: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 printf("--Change ambiguous grammar\n");
-                fprint_BNF(stdout, meta_expr_table[index]);
+                fprint_BNF(stdout, meta_expr_table[index], lex);
                 printf("\n");
-                fprint_BNF(stdout, expr);
+                fprint_BNF(stdout, expr, lex);
                 printf("\n");
+                assert_always(false);
                 exit(1);
             }
             else
             {
-                #if 0
+                #if 1
                 printf("WARNING: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
-                fprint_BNF(stdout, meta_expr_table[index]);
+                fprint_BNF(stdout, meta_expr_table[index], lex);
                 printf("\n");
-                fprint_BNF(stdout, expr);
+                fprint_BNF(stdout, expr, lex);
                 printf("\n");
                 #endif
-                Usize table_expr_precedence = 0;
-                Usize new_expr_precedence = 0;
-                {
+                assert_always(false);
+                // Usize table_expr_precedence = 0;
+                // Usize new_expr_precedence = 0;
+                // {
 
-                    BNFExpression table_expr = *meta_expr_table[index];
-                    table_expr.dot = 0;
-                    table_expr.look_ahead = {};
-                    BNFExpression new_expr = *expr;
-                    new_expr.dot = 0;
-                    new_expr.look_ahead = {};
-                    for (Usize i = 0; i < lex->expr_count; ++i)
-                    {
-                        if (is_BNFExpression(&table_expr, &lex->exprs[i]))
-                        {
-                            table_expr_precedence = i;
-                            break;
-                        }
-                    }
-                    for (Usize i = 0; i < lex->expr_count; ++i)
-                    {
-                        if (is_BNFExpression(&new_expr, &lex->exprs[i]))
-                        {
-                            new_expr_precedence = i;
-                            break;
-                        }
-                    }
-                }
+                //     BNFExpression table_expr = *meta_expr_table[index];
+                //     table_expr.dot = 0;
+                //     table_expr.look_ahead = {};
+                //     BNFExpression new_expr = *expr;
+                //     new_expr.dot = 0;
+                //     new_expr.look_ahead = {};
+                //     for (Usize i = 0; i < lex->expr_count; ++i)
+                //     {
+                //         if (is_BNFExpression(&table_expr, &lex->exprs[i]))
+                //         {
+                //             table_expr_precedence = i;
+                //             break;
+                //         }
+                //     }
+                //     for (Usize i = 0; i < lex->expr_count; ++i)
+                //     {
+                //         if (is_BNFExpression(&new_expr, &lex->exprs[i]))
+                //         {
+                //             new_expr_precedence = i;
+                //             break;
+                //         }
+                //     }
+                // }
 
-                if (table_expr_precedence < new_expr_precedence)
-                {
-                    #if 0
-                    printf("Choosing table %s resolution\n", op_to_str(table[index].type));
-                    #endif
-                }
-                else
-                {
-                    #if 0
-                    printf("Choosing %s resolution\n", op_to_str(op.type));
-                    #endif
-                    table[index] = op;
-                }
+                // if (table_expr_precedence < new_expr_precedence)
+                // {
+                //     #if 0
+                //     printf("Choosing table %s resolution\n", op_to_str(table[index].type));
+                //     #endif
+                // }
+                // else
+                // {
+                //     #if 0
+                //     printf("Choosing %s resolution\n", op_to_str(op.type));
+                //     #endif
+                //     table[index] = op;
+                // }
             }
 
         } break;
@@ -600,7 +634,7 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
     {
         for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
         {
-            strings_size_bytes += lex->LR_items[i].length * sizeof(char);
+            strings_size_bytes += lex->LR_items_str[i].length * sizeof(char);
         }
     }
     Usize expr_headers_size_bytes = sizeof(ParseExpr) * lex->expr_count;
@@ -668,11 +702,11 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
         for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
         {
             StringHeader *header = header_data;
-            header->count = (U32)lex->LR_items[i].length;
+            header->count = (U32)lex->LR_items_str[i].length;
             header->str_start = (U32)(string_data - parse_bin);
             header_data += 1;
-            memcpy(string_data, lex->LR_items[i].data, sizeof(char) * lex->LR_items[i].length);
-            string_data += sizeof(char) * lex->LR_items[i].length;
+            memcpy(string_data, lex->LR_items_str[i].data, sizeof(char) * lex->LR_items_str[i].length);
+            string_data += sizeof(char) * lex->LR_items_str[i].length;
         }
         assert_always(string_data == string_start + strings_size_bytes);
     }
@@ -688,7 +722,7 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
         {
             BNFExpression *expr = &lex->exprs[i];
             ParseExpr *header = header_data;
-            header->non_terminal = get_ir_item_index(lex, expr->non_terminal.data); // -1 in this case represents <S> if no errors
+            header->non_terminal = expr->non_terminal.type == TokenType::EMPTY ? -1 : expr->non_terminal.lr_item; // -1 in this case represents <S> if no errors
             header->production_count = expr->prod_count;
             header->prod_start = (U32)((U8 *)prod_data - parse_bin);
             header_data += 1;
@@ -696,7 +730,7 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
             for (Usize j = 0; j < expr->prod_count; ++j)
             {
                 I64 *prod = prod_data;
-                I64 index = get_ir_item_index(lex, expr->prod_tokens[j].data);
+                I64 index = expr->prod_tokens[j].lr_item;
                 assert_always(index != -1);
                 *prod = index;
                 prod_data += 1;
@@ -743,7 +777,7 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
                 TableOperation op = {};
                 op.type = TableOperationType::GOTO;
                 op.arg = edge->state_id;
-                I64 lr_index = get_ir_item_index(lex, edge->creation_token.data);
+                I64 lr_index = edge->creation_token.lr_item;
                 table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
             else if (edge->creation_token.type == TokenType::TERMINAL)
@@ -751,7 +785,7 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
                 TableOperation op = {};
                 op.type = TableOperationType::SHIFT;
                 op.arg = edge->state_id;
-                I64 lr_index = get_ir_item_index(lex, edge->creation_token.data);
+                I64 lr_index = edge->creation_token.lr_item;
                 table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
             else
@@ -766,7 +800,7 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
         {
             BNFExpression *expr = &state->exprs[j];
             if (expr->dot < expr->prod_count &&
-                is_str(expr->prod_tokens[expr->dot].data, lex->LR_items[lex->terminals_count - 1]))
+                expr->prod_tokens[expr->dot].lr_item == (I32)(lex->terminals_count - 1))
             {
                 TableOperation op = {};
                 op.type = TableOperationType::ACCEPT;
@@ -793,8 +827,9 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
                 }
 
                 op.arg = (U32)index;
-                I64 lr_index = get_ir_item_index(lex, expr->look_ahead.data);
-                table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
+                assert_always(false);
+                // I64 lr_index = get_ir_item_index(lex, expr->look_ahead.data);
+                // table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
         }        
     }
@@ -1095,7 +1130,7 @@ void create_all_substates(State *state_list, U32 *state_count, Grammar *lex)
                 sizeof(lex->exprs[0].prod_tokens[0]) * lex->exprs[0].prod_count);
 
             state->exprs[state->expr_count].prod_count += 1;
-            state->exprs[state->expr_count].prod_tokens[state->exprs[0].prod_count++] = BNFToken {TokenType::TERMINAL, lex->LR_items[lex->terminals_count - 1]};
+            state->exprs[state->expr_count].prod_tokens[state->exprs[0].prod_count++] = BNFToken {TokenType::TERMINAL, I32(lex->terminals_count - 1)};
 
             state->expr_count += 1;
         }

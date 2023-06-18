@@ -20,7 +20,7 @@ cd ..
 cd ..
 
 @REM %CLANG% -shared src/ptg.cpp %FLAGS% -D BUILD_DLL -o build/ptg.dll
-%CLANG% src/ptg.cpp %FLAGS% -o build/ptg.lib -fuse-ld=llvm-lib 
+@REM %CLANG% src/ptg.cpp %FLAGS% -o build/ptg.lib -fuse-ld=llvm-lib 
 @REM %CLANG% src/ptg.cpp src/ptg_cmd.cpp %FLAGS% -o build/ptg.exe
 
 
