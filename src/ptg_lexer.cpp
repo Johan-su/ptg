@@ -56,33 +56,6 @@ static void move_past_whitespace(const char *src, Usize *cursor)
 }
 
 
-static Errcode parse_token(const char *src, Usize *cursor, Grammar *lex)
-{
-    assert_always(false);
-    return -1;
-    // String token_str = {};
-    // token_str.data = &src[*cursor];
-    // Usize count = 0;
-    // while (src[*cursor] != ';')
-    // {
-    //     if (src[*cursor] == '\0')
-    //     {
-    //         return_with_error(1, "ERROR: failed to parse Lex_Token\n");
-    //     }
-
-
-    //     count += 1;
-    //     *cursor += 1;
-    // }
-    // token_str.length = count;
-    // token_str.stride = 1;
-
-    // lex->LR_items[lex->LR_items_count++] = token_str;
-    // lex->terminals_count += 1;
-    // return 0;
-}
-
-
 static bool is_bnf_token(BNFToken b0, BNFToken b1)
 {
     if (b0.lr_item != b1.lr_item) return false;
@@ -111,25 +84,25 @@ static void add_element_to_first_set(FirstSet *first_array, I32 non_terminal_ind
 
 
 
-static void set_first(Grammar *lex)
+static void set_first(Grammar *gram)
 {
     Usize stack_size = 2048;
     BNFToken *non_terminal_stack = alloc(BNFToken, stack_size);
     Usize stack_count = stack_size;
 
-    bool *checked_table = alloc(bool, lex->LR_items_count);
+    bool *checked_table = alloc(bool, gram->LR_items_count);
 
-    for (Usize i = 0; i < lex->terminals_count; ++i)
+    for (I32 i = 0; i < (I32)gram->terminals_count; ++i)
     {
-        for (Usize j = 0; j < lex->LR_items_count; ++j)
+        for (Usize j = 0; j < gram->LR_items_count; ++j)
         {
             checked_table[j] = false;
         }
 
-        for (Usize j = 0; j < lex->expr_count; ++j)
+        for (Usize j = 0; j < gram->expr_count; ++j)
         {
-            BNFExpression *expr = &lex->exprs[j];
-            if (expr->prod_count > 0 && expr->prod_tokens[0].lr_item == (I32)i)
+            BNFExpression *expr = &gram->exprs[j];
+            if (expr->prod_count > 0 && expr->prod_tokens[0].lr_item == i)
             {
                 assert_debug(stack_count > 0);
                 non_terminal_stack[--stack_count] = expr->non_terminal;
@@ -144,19 +117,19 @@ static void set_first(Grammar *lex)
 
             // TODO(Johan) maybe remove this check somehow
             // if (is_str(make_string("S"), non_terminal)) continue;
-            assert_always(false);
+            // assert_always(false);
 
             I32 lr_index = non_terminal.lr_item;
             assert_always(lr_index != -1);
 
             if (checked_table[lr_index]) continue;
 
-            BNFToken terminal = lex->LR_items[i];
-            add_element_to_first_set(lex->first_sets, lr_index, terminal);
+            BNFToken terminal = gram->LR_items[i];
+            add_element_to_first_set(gram->first_sets, lr_index, terminal);
 
-            for (Usize j = 0; j < lex->expr_count; ++j)
+            for (Usize j = 0; j < gram->expr_count; ++j)
             {
-                BNFExpression *expr = &lex->exprs[j];
+                BNFExpression *expr = &gram->exprs[j];
                 if (expr->prod_count > 0 && expr->prod_tokens[0].lr_item == non_terminal.lr_item)
                 {
                     assert_debug(stack_count > 0);
@@ -169,9 +142,9 @@ static void set_first(Grammar *lex)
     }
 
 
-    for (I32 i = 0; i < (I32)lex->terminals_count; ++i)
+    for (I32 i = 0; i < (I32)gram->terminals_count; ++i)
     {
-        add_element_to_first_set(lex->first_sets, i, lex->LR_items[i]);
+        add_element_to_first_set(gram->first_sets, i, gram->LR_items[i]);
     }
 
     end:
@@ -363,10 +336,13 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
         fprint_BNF(stdout, expr, gram);
         if (return_at_end)
         {
-            return 0;
+            goto end;
         }
         // i += 1;
     }
+    end:;
+    gram->first_sets = alloc(FirstSet, gram->LR_items_count);
+    set_first(gram);
     return 0;
 }
 
