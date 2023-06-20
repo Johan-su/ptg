@@ -92,7 +92,7 @@ static void fprint_BNF(FILE *stream, const BNFExpression *expr, const Grammar *g
         String look_str = gram->LR_items_str[expr->look_aheads[expr->prod_count - 1].lr_item];
         fprintf(stream, "%.*s", (int)look_str.length, look_str.data);
     }
-    fprintf(stream, "]\n");
+    fprintf(stream, "]");
 }
 
 
@@ -161,11 +161,11 @@ static bool is_state(State *s0, State *s1)
 }
 
 
-void fprint_state(FILE *stream, State *state, const Grammar *gram)
+void fprint_state(FILE *stream, const State *state, const Grammar *gram)
 {
     for (Usize j = 0; j < state->expr_count; ++j)
     {
-        BNFExpression *expr = &state->exprs[j];
+        const BNFExpression *expr = &state->exprs[j];
         State *expr_ptr = state->edges[j];
  
         
@@ -1118,6 +1118,7 @@ void create_all_substates(State *state_list, U32 *state_count, Grammar *gram)
 {
     *state_count = 0;
     State *state = &state_list[0];
+    // create first state by taking the closure of S (starting production)
     {
         state->state_id = 0;
         state->expr_count = 0;
@@ -1140,6 +1141,9 @@ void create_all_substates(State *state_list, U32 *state_count, Grammar *gram)
     
     for (Usize i = 0; i < *state_count; ++i)
     {
+        fprintf(stderr, "State %llu\n", i);
+        fprint_state(stderr, &state[i], gram);
+        fprintf(stderr, "\n");
         create_substates_from_state(&state[i], state_list, state_count, gram);
     }
 }
@@ -1245,6 +1249,8 @@ ParseTable *create_parse_table_from_bnf(const char *src)
 
     U32 state_count;
     create_all_substates(state_list, &state_count, gram);
+
+    assert_always(false);
     ParseTable *table = create_parse_table_from_states(gram, state_list, state_count); 
 
     free(state_list);

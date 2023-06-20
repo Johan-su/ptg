@@ -288,5 +288,5 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
 void create_all_substates(State *state_list, U32 *state_count, Grammar *lex);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
 
-void fprint_state(FILE *stream, State *state);
+void fprint_state(FILE *stream, const State *state, const Grammar *gram);
 bool print_formated(const char *format, ...);

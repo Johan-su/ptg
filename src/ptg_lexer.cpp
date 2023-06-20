@@ -333,7 +333,8 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
                 } break;
             }
         }
-        fprint_BNF(stdout, expr, gram);
+        // fprint_BNF(stdout, expr, gram);
+        // printf("\n");
         if (return_at_end)
         {
             goto end;
