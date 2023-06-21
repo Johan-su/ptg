@@ -91,7 +91,7 @@ static void fprintf_state_expression(FILE *f, const State_Expression *expr, cons
             assert_always(look_str.stride == 1);
             fprintf(f, "%.*s,", (int)look_str.length, look_str.data);
         }
-        String look_str = gram->LR_items_str[expr->look_aheads[bexpr->prod_count - 1].lr_item];
+        String look_str = gram->LR_items_str[expr->look_aheads[expr->look_ahead_count - 1].lr_item];
         fprintf(f, "%.*s", (int)look_str.length, look_str.data);
     }
     fprintf(f, "]");
@@ -174,7 +174,7 @@ static bool is_state_expression(const State_Expression *e0, const State_Expressi
 
 
 
-static bool is_state(State *s0, State *s1)
+static bool is_state(const State *s0, const State *s1)
 {
     assert_always(s0->expr_count <= 512);
     assert_always(s1->expr_count <= 512);
@@ -362,10 +362,6 @@ static void push_all_expressions_from_non_terminal_production(State *state, cons
         }
         else
         {
-            for (Usize i = 0; i < rule_expand_Sexpr->look_ahead_count; ++i)
-            {
-                assert_always(rule_expand_Sexpr->look_aheads[i].type != TokenType::INVALID);
-            }
             for (Usize i = 0; i < gram->expr_count; ++i)
             {
                 if (gram->exprs[i].non_terminal.lr_item != rule_to_expand.lr_item) continue;
@@ -375,20 +371,15 @@ static void push_all_expressions_from_non_terminal_production(State *state, cons
                 expr.grammar_prod_index = i;
                 expr.look_ahead_count = 0;
 
-                for (Usize l = 0; l < rule_expand_Sexpr->look_ahead_count; ++l)
-                {
-                    expr.look_aheads[expr.look_ahead_count++] = rule_expand_Sexpr->look_aheads[l];
-                }
-
 
                 I32 state_expr_index = get_expr_index_ignore_lookahead(state, &expr);
                 if (state_expr_index >= 0)
                 {
                     State_Expression *Sexpr = &state->exprs[state_expr_index];
 
-                    for (Usize l = 0; l < expr.look_ahead_count; ++l)
+                    for (Usize l = 0; l < rule_expand_Sexpr->look_ahead_count; ++l)
                     {
-                        BNFToken terminal = expr.look_aheads[l];
+                        BNFToken terminal = rule_expand_Sexpr->look_aheads[l];
 
                         if (!has_lookahead(Sexpr, terminal))
                         {
@@ -407,11 +398,6 @@ static void push_all_expressions_from_non_terminal_production(State *state, cons
                 }
             }
         }
-
-
-        Usize dot = 0;
-        assert_always(rule_expand_Bexpr->prod_count > 0);
-        rule_to_expand = rule_expand_Bexpr->prod_tokens[dot];
     }
 }
 
@@ -426,13 +412,11 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
     for (Usize i = 0; i < state->expr_count; ++i)
     {
 
-        State_Expression *Sexpr = &state->exprs[i];
-        const BNFExpression *Bexpr = &gram->exprs[Sexpr->grammar_prod_index];
-
-        if (Bexpr->non_terminal.type == TokenType::EMPTY) continue;
-
         State_Expression active_Sexpr = state->exprs[i];
         const BNFExpression *active_Bexpr = &gram->exprs[active_Sexpr.grammar_prod_index];
+
+        if (active_Bexpr->non_terminal.type == TokenType::EMPTY) continue;
+
 
 
         State *active_substate = &g_active_substate;
@@ -443,7 +427,8 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
             {
                 continue;
             }
-            State_Expression *expr = &state->exprs[j];
+            State_Expression *Sexpr = &state->exprs[j];
+            const BNFExpression *Bexpr = &gram->exprs[Sexpr->grammar_prod_index];
 
             // if (expr->prod_tokens[expr->dot].type == TokenType::INVALID) continue;
             if (Sexpr->dot >= Bexpr->prod_count ||
@@ -493,6 +478,7 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
             {
                 active_substate->state_id = *state_list_count;
                 state_list[*state_list_count] = *active_substate;
+                // fprint_state(stderr, &state_list[*state_list_count], gram);
                 state_to_point_to = &state_list[*state_list_count];
                 *state_list_count += 1;
             }
