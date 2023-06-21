@@ -44,7 +44,7 @@ static char *file_to_str(const char *file_path)
         goto end_close;
     }
     {
-        Usize buf_size = (Usize)file_size + 1; 
+        Usize buf_size = (Usize)file_size + 1;
         str = alloc(char, buf_size);
     }
     if (fread(str, sizeof(*str), (Usize)file_size, f) != (Usize)file_size)
