@@ -152,15 +152,19 @@ struct BNFToken
 struct BNFExpression
 {
     BNFToken non_terminal;
-    U32 dot;
 
     U32 prod_count;
     BNFToken *prod_tokens;
+};
 
+
+struct State_Expression
+{
+    U32 dot;
+    U32 grammar_prod_index;
     U32 look_ahead_count;
     BNFToken look_aheads[128];
 };
-
 
 struct State
 {
@@ -168,7 +172,7 @@ struct State
     U32 state_id;
     U32 expr_count;
     State *edges[512];
-    BNFExpression exprs[512];
+    State_Expression exprs[512];
 };
 
 
@@ -278,14 +282,13 @@ struct Lexer
     Lex_Token tokens[1024];
 };
 
-
-
+bool is_bnf_token(BNFToken b0, BNFToken b1);
 I32 get_ir_item_index(const Grammar *lex, String d);
 Errcode parse_bnf_src(Lexer *lex, const char *src);
 Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex);
 
 ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 state_count);
-void create_all_substates(State *state_list, U32 *state_count, Grammar *lex);
+Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar *gram);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
 
 void fprint_state(FILE *stream, const State *state, const Grammar *gram);

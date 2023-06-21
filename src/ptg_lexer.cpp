@@ -56,7 +56,7 @@ static void move_past_whitespace(const char *src, Usize *cursor)
 }
 
 
-static bool is_bnf_token(BNFToken b0, BNFToken b1)
+bool is_bnf_token(BNFToken b0, BNFToken b1)
 {
     if (b0.lr_item != b1.lr_item) return false;
     if (b0.type != b1.type) return false;
@@ -301,7 +301,7 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
 
         for (Usize j = start_non_terminal; j < start_non_terminal + prod_count; ++j)
         {
-            Lex_Token token = lex->tokens[j]; 
+            Lex_Token token = lex->tokens[j];
             switch (token.kind)
             {
                 case TOKEN_KIND::INVALID:
@@ -316,7 +316,7 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
                 {
                     assert_always(j + 1 < lex->count);
                     assert_always(lex->tokens[j + 1].kind != TOKEN_KIND::ASSIGNMENT);
-                    expr->prod_tokens[expr->prod_count++] = 
+                    expr->prod_tokens[expr->prod_count++] =
                         BNFToken {.type = TokenType::NONTERMINAL, .lr_item = get_ir_item_index(gram, token.str)};
                 } break;
                 case TOKEN_KIND::ASSIGNMENT:

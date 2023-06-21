@@ -14,7 +14,7 @@
 
 // TODO list:
 // TODO: add better error handling when creating parsing table
-// TODO: when parsing, output the amount of chars written  
+// TODO: when parsing, output the amount of chars written
 // TODO: predict required memory to parse list of tokens, if possible
 
 // TODO(Johan): make thread safe
@@ -39,6 +39,64 @@ bool print_formated(const char *format, ...)
 }
 
 
+static void fprintf_state_expression(FILE *f, const State_Expression *expr, const Grammar *gram)
+{
+    const BNFExpression *bexpr = &gram->exprs[expr->grammar_prod_index];
+    String non_terminal_str = gram->LR_items_str[bexpr->non_terminal.lr_item];
+
+
+    assert_always(non_terminal_str.stride == 1);
+    fprintf(f, "<%.*s> :=", (int)(non_terminal_str.length), non_terminal_str.data);
+    for (Usize i = 0; i < bexpr->prod_count; ++i)
+    {
+
+        if (i == expr->dot)
+        {
+            fprintf(f, " ? ");
+        }
+        else
+        {
+            fprintf(f, " ");
+        }
+
+        if (bexpr->prod_tokens[i].lr_item >= 0)
+        {
+            String expr_str = gram->LR_items_str[bexpr->prod_tokens[i].lr_item];
+            if (bexpr->prod_tokens[i].type == TokenType::TERMINAL)
+            {
+                fprintf(f, "\'%.*s\'", (int)expr_str.length, expr_str.data);
+            }
+            else if (bexpr->prod_tokens[i].type == TokenType::NONTERMINAL)
+            {
+                fprintf(f, "<%.*s>", (int)expr_str.length, expr_str.data);
+            }
+            else
+            {
+                assert_always(false);
+            }
+        }
+    }
+    if (expr->dot >= bexpr->prod_count)
+    {
+        fprintf(f, " ?");
+    }
+
+    fprintf(f, " [");
+
+    if (expr->look_ahead_count > 0)
+    {
+        for (Usize i = 0; i < expr->look_ahead_count - 1; ++i)
+        {
+            String look_str = gram->LR_items_str[expr->look_aheads[i].lr_item];
+            assert_always(look_str.stride == 1);
+            fprintf(f, "%.*s,", (int)look_str.length, look_str.data);
+        }
+        String look_str = gram->LR_items_str[expr->look_aheads[bexpr->prod_count - 1].lr_item];
+        fprintf(f, "%.*s", (int)look_str.length, look_str.data);
+    }
+    fprintf(f, "]");
+}
+
 static void fprint_BNF(FILE *stream, const BNFExpression *expr, const Grammar *gram)
 {
     String non_terminal_str = gram->LR_items_str[expr->non_terminal.lr_item];
@@ -47,15 +105,7 @@ static void fprint_BNF(FILE *stream, const BNFExpression *expr, const Grammar *g
     fprintf(stream, "<%.*s> :=", (int)(non_terminal_str.length), non_terminal_str.data);
     for (Usize i = 0; i < expr->prod_count; ++i)
     {
-
-        if (i == expr->dot)
-        {
-            fprintf(stream, " ? ");
-        }
-        else
-        {
-            fprintf(stream, " ");
-        }
+        fprintf(stream, " ");
 
         if (expr->prod_tokens[i].lr_item >= 0)
         {
@@ -74,25 +124,6 @@ static void fprint_BNF(FILE *stream, const BNFExpression *expr, const Grammar *g
             }
         }
     }
-    if (expr->dot >= expr->prod_count)
-    {
-        fprintf(stream, " ?");
-    }
-
-    fprintf(stream, " [");
-
-    if (expr->look_ahead_count > 0)
-    {
-        for (Usize i = 0; i < expr->look_ahead_count - 1; ++i)
-        {
-            String look_str = gram->LR_items_str[expr->look_aheads[i].lr_item];
-            assert_always(look_str.stride == 1);
-            fprintf(stream, "%.*s,", (int)look_str.length, look_str.data);
-        }
-        String look_str = gram->LR_items_str[expr->look_aheads[expr->prod_count - 1].lr_item];
-        fprintf(stream, "%.*s", (int)look_str.length, look_str.data);
-    }
-    fprintf(stream, "]");
 }
 
 
@@ -102,18 +133,9 @@ static void fprint_BNF(FILE *stream, const BNFExpression *expr, const Grammar *g
 
 static bool is_BNFExpression(const BNFExpression *b0, const BNFExpression *b1)
 {
-    if (b0->dot != b1->dot) return false;
-    if (b0->look_ahead_count != b1->look_ahead_count) return false;
     if (b0->non_terminal.type != b1->non_terminal.type) return false;
     if (b0->non_terminal.lr_item != b1->non_terminal.lr_item) return false;
     if (b0->prod_count != b1->prod_count) return false;
-
-    for (Usize i = 0; i < b0->look_ahead_count; ++i)
-    {
-        if (b0->look_aheads[i].type != b1->look_aheads[i].type) return false;
-        if (b0->look_aheads[i].lr_item != b1->look_aheads[i].lr_item) return false;
-    }
-
 
     for (Usize i = 0; i < b0->prod_count; ++i)
     {
@@ -125,38 +147,52 @@ static bool is_BNFExpression(const BNFExpression *b0, const BNFExpression *b1)
 }
 
 
-static bool is_BNFExpression_ignore_dot_lookahead(const BNFExpression *b0, const BNFExpression *b1)
+static bool is_state_expression_ignore_lookahead(const State_Expression *e0, const State_Expression *e1)
 {
-    if (b0->non_terminal.type != b1->non_terminal.type) return false;
-    if (b0->non_terminal.lr_item != b1->non_terminal.lr_item) return false;
-    if (b0->prod_count != b1->prod_count) return false;
-
-    for (Usize i = 0; i < b0->prod_count; ++i)
-    {
-        if (b0->prod_tokens[i].type != b1->prod_tokens[i].type) return false;
-        if (b0->prod_tokens[i].lr_item != b1->prod_tokens[i].lr_item) return false;
-    }
+    if (e0->dot != e1->dot) return false;
+    if (e0->grammar_prod_index != e1->grammar_prod_index) return false;
 
     return true;
 }
+
+
+static bool is_state_expression(const State_Expression *e0, const State_Expression *e1)
+{
+    if (e0->dot != e1->dot) return false;
+    if (e0->grammar_prod_index != e1->grammar_prod_index) return false;
+    if (e0->look_ahead_count != e1->look_ahead_count) return false;
+
+    for (Usize i = 0; i < e0->look_ahead_count; ++i)
+    {
+        if (!is_bnf_token(e0->look_aheads[i], e1->look_aheads[i]))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 
 static bool is_state(State *s0, State *s1)
 {
     assert_always(s0->expr_count <= 512);
     assert_always(s1->expr_count <= 512);
+
+
+    if (s0->creation_token.lr_item != s1->creation_token.lr_item) return false;
+    if (s0->creation_token.type != s1->creation_token.type) return false;
     if (s0->expr_count != s1->expr_count) return false;
 
 
     for (Usize i = 0; i < s0->expr_count; ++i)
     {
-        BNFExpression *ex0 = &s0->exprs[i]; 
-        BNFExpression *ex1 = &s1->exprs[i]; 
-
-
-        if (!is_BNFExpression(ex0, ex1)) return false;
-
+        if (!is_state_expression(&s0->exprs[i], &s1->exprs[i]))
+        {
+            return false;
+        }
     }
+
     return true;
 }
 
@@ -165,13 +201,12 @@ void fprint_state(FILE *stream, const State *state, const Grammar *gram)
 {
     for (Usize j = 0; j < state->expr_count; ++j)
     {
-        const BNFExpression *expr = &state->exprs[j];
+        const State_Expression *expr = &state->exprs[j];
         State *expr_ptr = state->edges[j];
- 
-        
-        fprint_BNF(stream, expr, gram);
 
-    
+
+        fprintf_state_expression(stream, expr, gram);
+
         if (expr_ptr != nullptr)
         {
             fprintf(stream, " -> %d", expr_ptr->state_id);
@@ -185,11 +220,11 @@ void fprint_state(FILE *stream, const State *state, const Grammar *gram)
 }
 
 
-static bool is_expr_already_expanded(State *state, BNFExpression *expr)
+static bool is_expr_already_expanded(const State *state, const State_Expression *expr)
 {
     for (Usize i = 0; i < state->expr_count; ++i)
     {
-        if (is_BNFExpression(&state->exprs[i], expr))
+        if (is_state_expression(&state->exprs[i], expr))
         {
             return true;
         }
@@ -199,26 +234,49 @@ static bool is_expr_already_expanded(State *state, BNFExpression *expr)
 
 
 
+static I32 get_expr_index_ignore_lookahead(const State *state, const State_Expression *expr)
+{
+    for (I32 i = 0; i < (I32)state->expr_count; ++i)
+    {
+        if (is_state_expression_ignore_lookahead(&state->exprs[i], expr))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
 
-static void push_all_expressions_from_non_terminal_production(State *state, Grammar *gram)
+static bool has_lookahead(const State_Expression *expr, BNFToken terminal)
+{
+    for (Usize i = 0; i < expr->look_ahead_count; ++i)
+    {
+        if (is_bnf_token(expr->look_aheads[i], terminal))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void push_all_expressions_from_non_terminal_production(State *state, const Grammar *gram)
 {
     for (Usize k = 0; k < state->expr_count; ++k)
     {
         assert_always(state->expr_count < ARRAY_COUNT(state->exprs));
-        BNFExpression *rule_expand_expr = &state->exprs[k];
+        State_Expression *rule_expand_Sexpr = &state->exprs[k];
+        const BNFExpression *rule_expand_Bexpr = &gram->exprs[rule_expand_Sexpr->grammar_prod_index];
 
-        if (rule_expand_expr->dot >= rule_expand_expr->prod_count) continue;
+        if (rule_expand_Sexpr->dot >= rule_expand_Bexpr->prod_count) continue;
 
-        BNFToken rule_to_expand = rule_expand_expr->prod_tokens[rule_expand_expr->dot];
+        BNFToken rule_to_expand = rule_expand_Bexpr->prod_tokens[rule_expand_Sexpr->dot];
         if (rule_to_expand.type != TokenType::NONTERMINAL) continue;
 
 
 
         // if (rule_expand_expr->prod.expressions[rule_expand_expr->dot + 1].type != TokenType::INVALID)
-        if (rule_expand_expr->dot + 1 < rule_expand_expr->prod_count)
+        if (rule_expand_Sexpr->dot + 1 < rule_expand_Bexpr->prod_count)
         {
-            I64 lr_index = rule_expand_expr->prod_tokens[rule_expand_expr->dot + 1].lr_item;
-            assert_always(lr_index != -1);
+            I32 lr_index = rule_expand_Bexpr->prod_tokens[rule_expand_Sexpr->dot + 1].lr_item;
 
             for (Usize i = 0; i < gram->expr_count; ++i)
             {
@@ -236,78 +294,115 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
                     }
                 }
 
-                if (produces_empty_set)
+                for (Usize j = 0; j < gram->first_sets[lr_index].terminal_count; ++j)
                 {
-                    for (Usize j = 0; j < gram->first_sets[lr_index].terminal_count; ++j)
+
+                    State_Expression expr = {};
+                    expr.dot = 0;
+                    expr.grammar_prod_index = i;
+                    expr.look_ahead_count = 0;
+
+                    BNFToken terminal = {};
+                    terminal.lr_item = gram->first_sets[lr_index].terminals[j].lr_item;
+                    terminal.type = TokenType::TERMINAL;
+
+
+
+                    I32 state_expr_index = get_expr_index_ignore_lookahead(state, &expr);
+                    if (state_expr_index >= 0)
                     {
-                        BNFExpression expr = gram->exprs[i];
-
-                        BNFToken terminal = {};
-                        terminal.lr_item = gram->first_sets[lr_index].terminals[j].lr_item;
-                        terminal.type = TokenType::TERMINAL;
-
-
-                        expr.look_aheads[expr.look_ahead_count++] = terminal;
-                        
-
-                        if (!is_expr_already_expanded(state, &expr))
+                        State_Expression *Sexpr = &state->exprs[state_expr_index];
+                        if (!has_lookahead(Sexpr, terminal))
                         {
-                            state->exprs[state->expr_count++] = expr;
+                            Sexpr->look_aheads[Sexpr->look_ahead_count++] = terminal;
                         }
                     }
+                    else
                     {
-                        BNFExpression expr = gram->exprs[i];
-                        for (Usize l = 0; l < rule_expand_expr->look_ahead_count; ++l)
-                        {
-                            expr.look_aheads[expr.look_ahead_count++] = rule_expand_expr->look_aheads[l]; 
-                        }
-                        if (!is_expr_already_expanded(state, &expr)) 
-                        {
-                            state->exprs[state->expr_count++] = expr;
-                        }
+                        expr.look_aheads[expr.look_ahead_count++] = terminal;
+                        state->exprs[state->expr_count++] = expr;
                     }
                 }
-                else
+
+
+                if (produces_empty_set)
                 {
-                    for (Usize j = 0; j < gram->first_sets[lr_index].terminal_count; ++j)
+                    State_Expression expr = {};
+                    expr.dot = 0;
+                    expr.grammar_prod_index = i;
+                    expr.look_ahead_count = 0;
+
+                    I32 state_expr_index = get_expr_index_ignore_lookahead(state, &expr);
+                    if (state_expr_index >= 0)
                     {
-                        BNFExpression expr = gram->exprs[i];
+                        State_Expression *Sexpr = &state->exprs[state_expr_index];
 
-                        BNFToken terminal = {};
-                        terminal.lr_item = gram->first_sets[lr_index].terminals[j].lr_item;
-                        terminal.type = TokenType::TERMINAL;
-
-
-                        expr.look_aheads[expr.look_ahead_count++] = terminal;
-                        
-
-                        if (!is_expr_already_expanded(state, &expr))
+                        for (Usize l = 0; l < expr.look_ahead_count; ++l)
                         {
-                            state->exprs[state->expr_count++] = expr;
-                        }
-                    }
+                            BNFToken terminal = expr.look_aheads[l];
 
+                            if (!has_lookahead(Sexpr, terminal))
+                            {
+                                Sexpr->look_aheads[Sexpr->look_ahead_count++] = terminal;
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        for (Usize l = 0; l < rule_expand_Sexpr->look_ahead_count; ++l)
+                        {
+                            expr.look_aheads[expr.look_ahead_count++] = rule_expand_Sexpr->look_aheads[l];
+                        }
+                        state->exprs[state->expr_count++] = expr;
+                    }
                 }
             }
 
         }
         else
         {
-            for (Usize i = 0; i < rule_expand_expr->look_ahead_count; ++i)
+            for (Usize i = 0; i < rule_expand_Sexpr->look_ahead_count; ++i)
             {
-                assert_always(rule_expand_expr->look_aheads[i].type != TokenType::INVALID);
+                assert_always(rule_expand_Sexpr->look_aheads[i].type != TokenType::INVALID);
             }
             for (Usize i = 0; i < gram->expr_count; ++i)
             {
                 if (gram->exprs[i].non_terminal.lr_item != rule_to_expand.lr_item) continue;
 
-                BNFExpression expr = gram->exprs[i];
-                for (Usize l = 0; l < rule_expand_expr->look_ahead_count; ++l)
+                State_Expression expr = {};
+                expr.dot = 0;
+                expr.grammar_prod_index = i;
+                expr.look_ahead_count = 0;
+
+                for (Usize l = 0; l < rule_expand_Sexpr->look_ahead_count; ++l)
                 {
-                    expr.look_aheads[expr.look_ahead_count++] = rule_expand_expr->look_aheads[l];
+                    expr.look_aheads[expr.look_ahead_count++] = rule_expand_Sexpr->look_aheads[l];
                 }
-                if (!is_expr_already_expanded(state, &expr)) 
+
+
+                I32 state_expr_index = get_expr_index_ignore_lookahead(state, &expr);
+                if (state_expr_index >= 0)
                 {
+                    State_Expression *Sexpr = &state->exprs[state_expr_index];
+
+                    for (Usize l = 0; l < expr.look_ahead_count; ++l)
+                    {
+                        BNFToken terminal = expr.look_aheads[l];
+
+                        if (!has_lookahead(Sexpr, terminal))
+                        {
+                            Sexpr->look_aheads[Sexpr->look_ahead_count++] = terminal;
+                        }
+                    }
+
+                }
+                else
+                {
+                    for (Usize l = 0; l < rule_expand_Sexpr->look_ahead_count; ++l)
+                    {
+                        expr.look_aheads[expr.look_ahead_count++] = rule_expand_Sexpr->look_aheads[l];
+                    }
                     state->exprs[state->expr_count++] = expr;
                 }
             }
@@ -315,25 +410,30 @@ static void push_all_expressions_from_non_terminal_production(State *state, Gram
 
 
         Usize dot = 0;
-        rule_expand_expr = &state->exprs[k];
-        assert_always(state->exprs[k].prod_count > 0);
-        rule_to_expand = state->exprs[k].prod_tokens[dot];
+        assert_always(rule_expand_Bexpr->prod_count > 0);
+        rule_to_expand = rule_expand_Bexpr->prod_tokens[dot];
     }
 }
 
 
 static State g_active_substate = {};
 
-static void create_substates_from_state(State *state, State *state_list, U32 *state_list_count, Grammar *lex)
+static void create_substates_from_state(State *state, State *state_list, U32 *state_list_count, const Grammar *gram)
 {
     assert_always(state->expr_count < ARRAY_COUNT(state->exprs));
     bool *check_list = alloc(bool, state->expr_count);
 
     for (Usize i = 0; i < state->expr_count; ++i)
     {
-        if (state->exprs[i].non_terminal.type == TokenType::EMPTY) continue;
 
-        BNFExpression active_expr = state->exprs[i];
+        State_Expression *Sexpr = &state->exprs[i];
+        const BNFExpression *Bexpr = &gram->exprs[Sexpr->grammar_prod_index];
+
+        if (Bexpr->non_terminal.type == TokenType::EMPTY) continue;
+
+        State_Expression active_Sexpr = state->exprs[i];
+        const BNFExpression *active_Bexpr = &gram->exprs[active_Sexpr.grammar_prod_index];
+
 
         State *active_substate = &g_active_substate;
         *active_substate = {};
@@ -343,31 +443,33 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
             {
                 continue;
             }
-            BNFExpression *expr = &state->exprs[j]; 
+            State_Expression *expr = &state->exprs[j];
 
             // if (expr->prod_tokens[expr->dot].type == TokenType::INVALID) continue;
-            if (expr->dot >= expr->prod_count ||
-                active_expr.dot >= active_expr.prod_count ||
-                active_expr.prod_tokens[active_expr.dot].lr_item != expr->prod_tokens[expr->dot].lr_item)
+            if (Sexpr->dot >= Bexpr->prod_count ||
+                active_Sexpr.dot >= active_Bexpr->prod_count ||
+                active_Bexpr->prod_tokens[active_Sexpr.dot].lr_item != Bexpr->prod_tokens[Sexpr->dot].lr_item)
                 {
                     continue;
                 }
             // skip shifting End token as it is the end token and means the parsing completed successfully
-            if (expr->prod_tokens[expr->dot].lr_item == (I32)(lex->terminals_count - 1)) continue;
+            if (Bexpr->prod_tokens[Sexpr->dot].lr_item == (I32)(gram->terminals_count - 1)) continue;
 
-            active_substate->creation_token = active_expr.prod_tokens[active_expr.dot];
+            active_substate->creation_token = active_Bexpr->prod_tokens[active_Sexpr.dot];
 
-            active_substate->exprs[active_substate->expr_count] = *expr;
+            active_substate->exprs[active_substate->expr_count] = *Sexpr;
             active_substate->exprs[active_substate->expr_count].dot += 1;
 
-            BNFExpression *last_expr = &active_substate->exprs[active_substate->expr_count];
+            State_Expression *last_Sexpr = &active_substate->exprs[active_substate->expr_count];
+            const BNFExpression *last_Bexpr = &gram->exprs[last_Sexpr->grammar_prod_index];
+
             active_substate->expr_count += 1;
 
 
-            if (last_expr->dot < last_expr->prod_count && 
-                last_expr->prod_tokens[last_expr->dot].type == TokenType::NONTERMINAL)
+            if (last_Sexpr->dot < last_Bexpr->prod_count &&
+                last_Bexpr->prod_tokens[last_Sexpr->dot].type == TokenType::NONTERMINAL)
             {
-                push_all_expressions_from_non_terminal_production(active_substate, lex);
+                push_all_expressions_from_non_terminal_production(active_substate, gram);
             }
             check_list[j] = true;
 
@@ -401,11 +503,14 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
 
             for (Usize k = 0; k < state->expr_count; ++k)
             {
-                
-                if (state->exprs[k].dot < state->exprs[k].prod_count &&
-                    active_substate->creation_token.lr_item == state->exprs[k].prod_tokens[state->exprs[k].dot].lr_item)
+                State_Expression *k_Sexpr = &state->exprs[k];
+                const BNFExpression *k_Bexpr = &gram->exprs[k_Sexpr->grammar_prod_index];
+
+
+                if (k_Sexpr->dot < k_Bexpr->prod_count &&
+                    active_substate->creation_token.lr_item == k_Bexpr->prod_tokens[k_Sexpr->dot].lr_item)
                 {
-                    state->edges[k] = state_to_point_to; 
+                    state->edges[k] = state_to_point_to;
                 }
             }
         }
@@ -448,12 +553,12 @@ void graph_from_state_list(FILE *f, const State *state_list, Usize state_count, 
                 {
 
                     assert_always(creation_token_str.stride == 1);
-                    fprintf(f, " [label=\"%.*s\"];\n", 
+                    fprintf(f, " [label=\"%.*s\"];\n",
                         (int)creation_token_str.length, creation_token_str.data);
                 }
                 else if (edge->creation_token.type == TokenType::TERMINAL)
                 {
-                    fprintf(f, " [label=\"\'%.*s\'\"];\n", 
+                    fprintf(f, " [label=\"\'%.*s\'\"];\n",
                         (int)creation_token_str.length, creation_token_str.data);
                 }
                 else
@@ -527,12 +632,12 @@ void print_table(ParseTable *table)
 
 
 
-static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_expr_table, Usize table_size,
-    BNFExpression *expr, I64 look_ahead_index, Usize state_id, TableOperation op)
+static void table_set(const Grammar *gram, TableOperation *table, State_Expression **meta_expr_table, Usize table_size,
+    State_Expression *expr, I64 look_ahead_index, Usize state_id, TableOperation op)
 {
     assert_always(look_ahead_index != -1);
 
-    Usize index = (Usize)look_ahead_index + state_id * lex->LR_items_count;
+    Usize index = (Usize)look_ahead_index + state_id * gram->LR_items_count;
     assert_always(index < table_size);(void)table_size;
     switch (table[index].type)
     {
@@ -549,9 +654,9 @@ static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_
                 //TODO(Johan) improve using better error handling
                 printf("ERROR: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
                 printf("--Change ambiguous grammar\n");
-                fprint_BNF(stdout, meta_expr_table[index], lex);
+                fprintf_state_expression(stdout, meta_expr_table[index], gram);
                 printf("\n");
-                fprint_BNF(stdout, expr, lex);
+                fprintf_state_expression(stdout, expr, gram);
                 printf("\n");
                 assert_always(false);
                 exit(1);
@@ -560,9 +665,10 @@ static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_
             {
                 #if 1
                 printf("WARNING: table %s - %s conflict\n", op_to_str(table[index].type), op_to_str(op.type));
-                fprint_BNF(stdout, meta_expr_table[index], lex);
+
+                fprintf_state_expression(stdout, meta_expr_table[index], gram);
                 printf("\n");
-                fprint_BNF(stdout, expr, lex);
+                fprintf_state_expression(stdout, expr, gram);
                 printf("\n");
                 #endif
                 assert_always(false);
@@ -576,17 +682,17 @@ static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_
                 //     BNFExpression new_expr = *expr;
                 //     new_expr.dot = 0;
                 //     new_expr.look_ahead = {};
-                //     for (Usize i = 0; i < lex->expr_count; ++i)
+                //     for (Usize i = 0; i < gram->expr_count; ++i)
                 //     {
-                //         if (is_BNFExpression(&table_expr, &lex->exprs[i]))
+                //         if (is_BNFExpression(&table_expr, &gram->exprs[i]))
                 //         {
                 //             table_expr_precedence = i;
                 //             break;
                 //         }
                 //     }
-                //     for (Usize i = 0; i < lex->expr_count; ++i)
+                //     for (Usize i = 0; i < gram->expr_count; ++i)
                 //     {
-                //         if (is_BNFExpression(&new_expr, &lex->exprs[i]))
+                //         if (is_BNFExpression(&new_expr, &gram->exprs[i]))
                 //         {
                 //             new_expr_precedence = i;
                 //             break;
@@ -618,34 +724,34 @@ static void table_set(Grammar *lex, TableOperation *table, BNFExpression **meta_
         {
             assert_always(false);
         } break;
-        default: assert_always(false && "Unreachable");     
+        default: assert_always(false && "Unreachable");
     }
 }
 
 #define PADDING_FOR_ALIGNMENT(ptr, type) ((alignof(type) - ((ptr) % alignof(type))) % alignof(type))
 
-ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 state_count)
+ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_list, U32 state_count)
 {
-    Usize table_size = state_count * lex->LR_items_count;
-    BNFExpression **meta_expr_table = alloc(BNFExpression *, table_size);
+    Usize table_size = state_count * gram->LR_items_count;
+    State_Expression **meta_expr_table = alloc(State_Expression *, table_size);
     if (meta_expr_table == nullptr) return nullptr;
 
 
-    Usize string_headers_size_bytes = sizeof(StringHeader) * (lex->LR_items_count - lex->terminals_count);
+    Usize string_headers_size_bytes = sizeof(StringHeader) * (gram->LR_items_count - gram->terminals_count);
     // get size of strings of the non terminals
     Usize strings_size_bytes = 0;
     {
-        for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
+        for (Usize i = gram->terminals_count; i < gram->LR_items_count; ++i)
         {
-            strings_size_bytes += lex->LR_items_str[i].length * sizeof(char);
+            strings_size_bytes += gram->LR_items_str[i].length * sizeof(char);
         }
     }
-    Usize expr_headers_size_bytes = sizeof(ParseExpr) * lex->expr_count;
+    Usize expr_headers_size_bytes = sizeof(ParseExpr) * gram->expr_count;
     // get byte size of all productions
     Usize prods_size_bytes = 0;
-    for (Usize i = 0; i < lex->expr_count; ++i)
+    for (Usize i = 0; i < gram->expr_count; ++i)
     {
-        BNFExpression *expr = &lex->exprs[i];
+        const BNFExpression *expr = &gram->exprs[i];
         prods_size_bytes += sizeof(I64) * expr->prod_count;
     }
     Usize table_size_bytes = sizeof(TableOperation) * table_size;
@@ -675,18 +781,18 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
 
 
     parse_table->size_in_bytes = (U32)parse_table_size;
-    // relative to ParseTable 
+    // relative to ParseTable
     parse_table->string_header_start = (U32)(sizeof(*parse_table) + table_to_string_header_padding);
-    parse_table->string_header_count = lex->LR_items_count - lex->terminals_count; // should be the same as non terminal count
+    parse_table->string_header_count = gram->LR_items_count - gram->terminals_count; // should be the same as non terminal count
     parse_table->string_header_size = sizeof(StringHeader);
     // relative to ParseTable
-    parse_table->expr_header_start = (U32)(parse_table->string_header_start + sizeof(StringHeader) * parse_table->string_header_count + string_header_to_expr_header_padding); 
-    parse_table->expr_count = lex->expr_count;
+    parse_table->expr_header_start = (U32)(parse_table->string_header_start + sizeof(StringHeader) * parse_table->string_header_count + string_header_to_expr_header_padding);
+    parse_table->expr_count = gram->expr_count;
     parse_table->expr_header_size = sizeof(ParseExpr);
     // relative to ParseTable
     parse_table->table_start = (U32)(parse_table->expr_header_start + sizeof(ParseExpr) * parse_table->expr_count + expr_header_to_table_padding);
     parse_table->state_count = state_count;
-    parse_table->LR_items_count = lex->LR_items_count;
+    parse_table->LR_items_count = gram->LR_items_count;
 
 
 
@@ -702,14 +808,14 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
         StringHeader *header_data = (StringHeader *)(parse_bin + parse_table->string_header_start);
         U8 *string_data = string_start;
         // start at end of terminals, (start of non_terminals)
-        for (Usize i = lex->terminals_count; i < lex->LR_items_count; ++i)
+        for (Usize i = gram->terminals_count; i < gram->LR_items_count; ++i)
         {
             StringHeader *header = header_data;
-            header->count = (U32)lex->LR_items_str[i].length;
+            header->count = (U32)gram->LR_items_str[i].length;
             header->str_start = (U32)(string_data - parse_bin);
             header_data += 1;
-            memcpy(string_data, lex->LR_items_str[i].data, sizeof(char) * lex->LR_items_str[i].length);
-            string_data += sizeof(char) * lex->LR_items_str[i].length;
+            memcpy(string_data, gram->LR_items_str[i].data, sizeof(char) * gram->LR_items_str[i].length);
+            string_data += sizeof(char) * gram->LR_items_str[i].length;
         }
         assert_always(string_data == string_start + strings_size_bytes);
     }
@@ -721,9 +827,9 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
         I64 *prod_data = (I64 *)(prod_start);
 
 
-        for (Usize i = 0; i < lex->expr_count; ++i)
+        for (Usize i = 0; i < gram->expr_count; ++i)
         {
-            BNFExpression *expr = &lex->exprs[i];
+            const BNFExpression *expr = &gram->exprs[i];
             ParseExpr *header = header_data;
             header->non_terminal = expr->non_terminal.type == TokenType::EMPTY ? -1 : expr->non_terminal.lr_item; // -1 in this case represents <S> if no errors
             header->production_count = expr->prod_count;
@@ -753,7 +859,8 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
 
         for (Usize j = 0; j < state->expr_count; ++j)
         {
-            BNFExpression *expr = &state->exprs[j];
+            State_Expression *expr = &state->exprs[j];
+            const BNFExpression *bnf_expr = &gram->exprs[expr->grammar_prod_index];
             State *edge = state->edges[j];
             if (edge == nullptr) continue;
 
@@ -780,16 +887,16 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
                 TableOperation op = {};
                 op.type = TableOperationType::GOTO;
                 op.arg = edge->state_id;
-                I64 lr_index = edge->creation_token.lr_item;
-                table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
+                I32 lr_index = edge->creation_token.lr_item;
+                table_set(gram, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
             else if (edge->creation_token.type == TokenType::TERMINAL)
             {
                 TableOperation op = {};
                 op.type = TableOperationType::SHIFT;
                 op.arg = edge->state_id;
-                I64 lr_index = edge->creation_token.lr_item;
-                table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
+                I32 lr_index = edge->creation_token.lr_item;
+                table_set(gram, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
             else
             {
@@ -801,26 +908,28 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
 
         for (Usize j = 0; j < state->expr_count; ++j)
         {
-            BNFExpression *expr = &state->exprs[j];
-            if (expr->dot < expr->prod_count &&
-                expr->prod_tokens[expr->dot].lr_item == (I32)(lex->terminals_count - 1))
+            State_Expression *Sexpr = &state->exprs[j];
+            const BNFExpression *Bexpr = &gram->exprs[Sexpr->grammar_prod_index];
+
+            if (Sexpr->dot < Bexpr->prod_count &&
+                Bexpr->prod_tokens[Sexpr->dot].lr_item == (I32)(gram->terminals_count - 1))
             {
                 TableOperation op = {};
                 op.type = TableOperationType::ACCEPT;
                 op.arg = 0;
-                table_set(lex, table_data, meta_expr_table, table_size, 
-                    expr, (I64)lex->terminals_count - 1, state->state_id, op);
+                table_set(gram, table_data, meta_expr_table, table_size,
+                    Sexpr, (I64)gram->terminals_count - 1, state->state_id, op);
             }
-            else if (expr->dot >= expr->prod_count)
+            else if (Sexpr->dot >= Bexpr->prod_count)
             {
                 TableOperation op {};
                 op.type = TableOperationType::REDUCE;
 
                 I64 index = -1;
                 {
-                    for (Usize k = 0; k < lex->expr_count; ++k)
+                    for (Usize k = 0; k < gram->expr_count; ++k)
                     {
-                        if (is_BNFExpression_ignore_dot_lookahead(expr, &lex->exprs[k]))
+                        if (is_BNFExpression(Bexpr, &gram->exprs[k]))
                         {
                             index = (I64)k;
                             break;
@@ -831,10 +940,10 @@ ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 
 
                 op.arg = (U32)index;
                 assert_always(false);
-                // I64 lr_index = get_ir_item_index(lex, expr->look_ahead.data);
-                // table_set(lex, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
+                // I64 lr_index = get_ir_item_index(gram, expr->look_ahead.data);
+                // table_set(gram, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
             }
-        }        
+        }
     }
 
     return parse_table;
@@ -918,11 +1027,11 @@ static bool print_parse_error_string(char *err_msg_out, Usize *err_msg_size, Usi
 
 static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize token_count, const ParseTable *table, U32 flags, Expr **syntax_tree_out, char *err_msg_out, Usize msg_buf_size)
 {
-    Usize state_stack_size = 1024; 
+    Usize state_stack_size = 1024;
     U32 *state_stack = alloc(U32, state_stack_size);
     Usize state_count = state_stack_size;
 
-    // symbol_stack_size != token_count because a epsilon/nothing string can always be reduced to a non-terminal 
+    // symbol_stack_size != token_count because a epsilon/nothing string can always be reduced to a non-terminal
     //and as such add arbritrary amount of symbols to the stack
     Usize symbol_stack_size = 1024;
     I64 *symbol_stack = alloc(I64, symbol_stack_size);
@@ -955,7 +1064,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
         {
             active = false;
             succeded_parsing = false;
-            break; 
+            break;
         }
         I64 lookahead_lr_index = token_list[index].token_type;
         if (lookahead_lr_index < 0 || lookahead_lr_index >= (I64)table->LR_items_count)
@@ -1042,7 +1151,7 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
                     I64 lr_item = symbol_stack[symbol_count++];
                     I64 prod_lr = ((I64 *)((U8 *)table + current_expr->prod_start))[i];
                     state_count += 1;
-                    
+
                     if (lr_item != prod_lr)
                     {
                         String prod = get_string_from_lr(table, prod_lr);
@@ -1117,31 +1226,56 @@ static bool parse_tokens_with_parse_table(const ParseToken *token_list, Usize to
 }
 
 
-void create_all_substates(State *state_list, U32 *state_count, Grammar *gram)
+Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar *gram)
 {
     *state_count = 0;
     State *state = &state_list[0];
+
+    BNFToken first_non = gram->exprs[0].non_terminal;
+
+
+    // handle if starting production does not have End terminal
+    for (Usize i = 0; i < gram->expr_count; ++i)
+    {
+        const BNFExpression *expr = &gram->exprs[i];
+
+        if (!is_bnf_token(expr->non_terminal, first_non)) continue;
+
+
+
+        if (expr->prod_count <= 0)
+        {
+            return_with_error(1, "ERROR: starting production cannot be empty");
+        }
+        if (expr->prod_tokens[expr->prod_count - 1].lr_item != (I32)gram->terminals_count - 1)
+        {
+            return_with_error(1, "ERROR: starting production has to end with 'End' terminal");
+        }
+    }
+
     // create first state by taking the closure of S (starting production)
     {
-        state->state_id = 0;
-        state->expr_count = 0;
+        for (Usize i = 0; i < gram->expr_count; ++i)
         {
-            state->exprs[state->expr_count] = gram->exprs[0];
-            state->exprs[state->expr_count].prod_tokens = alloc(BNFToken, gram->exprs[0].prod_count + 1);
-            state->exprs[state->expr_count].prod_count = 0;
-            
-            memcpy(state->exprs[state->expr_count].prod_tokens, gram->exprs[0].prod_tokens, 
-                sizeof(gram->exprs[0].prod_tokens[0]) * gram->exprs[0].prod_count);
+            const BNFExpression *expr = &gram->exprs[i];
 
-            state->exprs[state->expr_count].prod_count += 1;
-            state->exprs[state->expr_count].prod_tokens[state->exprs[0].prod_count++] = BNFToken {TokenType::TERMINAL, I32(gram->terminals_count - 1)};
+            if (!is_bnf_token(expr->non_terminal, first_non)) continue;
 
-            state->expr_count += 1;
+            State_Expression Sexpr = {};
+            Sexpr.dot = 0;
+            Sexpr.grammar_prod_index = i;
+            Sexpr.look_ahead_count = 0;
+
+            state->exprs[state->expr_count++] = Sexpr;
+
         }
+
+        state->state_id = 0;
+        state->creation_token = BNFToken {.type = TokenType::TERMINAL, .lr_item = (I32)gram->terminals_count};
         push_all_expressions_from_non_terminal_production(state, gram);
         *state_count += 1;
     }
-    
+
     for (Usize i = 0; i < *state_count; ++i)
     {
         fprintf(stderr, "State %llu\n", i);
@@ -1149,6 +1283,7 @@ void create_all_substates(State *state_list, U32 *state_count, Grammar *gram)
         fprintf(stderr, "\n");
         create_substates_from_state(&state[i], state_list, state_count, gram);
     }
+    return 0;
 }
 
 bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
@@ -1164,7 +1299,7 @@ bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
     Usize stack_size = 1024;
     Expr **expr_stack = alloc(Expr *, stack_size);
     Usize stack_count = stack_size;
-    
+
     expr_stack[--stack_count] = tree_list;
 
     while (stack_count < stack_size)
@@ -1251,10 +1386,16 @@ ParseTable *create_parse_table_from_bnf(const char *src)
     }
 
     U32 state_count;
-    create_all_substates(state_list, &state_count, gram);
+    if (create_all_substates(state_list, &state_count, gram))
+    {
+        free(state_list);
+        free(gram);
+        free(lex);
+        return nullptr;
+    }
 
     assert_always(false);
-    ParseTable *table = create_parse_table_from_states(gram, state_list, state_count); 
+    ParseTable *table = create_parse_table_from_states(gram, state_list, state_count);
 
     free(state_list);
     free(gram);
