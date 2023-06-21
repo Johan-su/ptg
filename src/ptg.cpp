@@ -414,55 +414,58 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
 }
 
 
-void graph_from_state_list(FILE *f, State *state_list, Usize state_count)
+void graph_from_state_list(FILE *f, const State *state_list, Usize state_count, const Grammar *gram)
 {
-    assert_always(false);
-    // fprintf(f, "digraph G {\n");
+    fprintf(f, "digraph G {\n");
 
-    // for (Usize i = 0; i < state_count; ++i)
-    // {
-    //     State *state = &state_list[i];
-    //     fprintf(f, "n%u [label=\"", state->state_id);
-    //     fprintf(f, "State %u\n", state->state_id);
-    //     fprint_state(f, state);
-    //     fprintf(f, "\"];\n");
-    //     for (Usize j = 0; j < state->expr_count; ++j)
-    //     {
-    //         // BNFExpression *expr = &state->exprs[j];
-    //         State *edge = state->edges[j];
-    //         if (edge == nullptr)
-    //         {
-    //             continue;
-    //         }
+    for (Usize i = 0; i < state_count; ++i)
+    {
+        const State *state = &state_list[i];
+        fprintf(f, "n%u [label=\"", state->state_id);
+        fprintf(f, "State %u\n", state->state_id);
+        fprint_state(f, state, gram);
+        fprintf(f, "\"];\n");
+        for (Usize j = 0; j < state->expr_count; ++j)
+        {
+            State *edge = state->edges[j];
+            if (edge == nullptr)
+            {
+                continue;
+            }
 
-    //         for (I64 k = (I64)j - 1; k >= 0; --k)
-    //         {
-    //             if (edge == state->edges[k])
-    //             {
-    //                 goto continue_outer;
-    //             }
-    //         }
+            for (I64 k = (I64)j - 1; k >= 0; --k)
+            {
+                if (edge == state->edges[k])
+                {
+                    goto continue_outer;
+                }
+            }
 
-    //         fprintf(f, "n%u -> n%u", state->state_id, edge->state_id);
-    //         if (edge->creation_token.type == TokenType::NONTERMINAL)
-    //         {
-    //             fprintf(f, " [label=\"%.*s\"];\n", 
-    //                 (int)edge->creation_token.data.length, edge->creation_token.data.data);
-    //         }
-    //         else if (edge->creation_token.type == TokenType::TERMINAL)
-    //         {
-    //             fprintf(f, " [label=\"\'%.*s\'\"];\n", 
-    //                 (int)edge->creation_token.data.length, edge->creation_token.data.data);
-    //         }
-    //         else
-    //         {
-    //             assert_always(false);
-    //         }
+            fprintf(f, "n%u -> n%u", state->state_id, edge->state_id);
+            {
+                String creation_token_str = gram->LR_items_str[edge->creation_token.lr_item];
+                if (edge->creation_token.type == TokenType::NONTERMINAL)
+                {
 
-    //         continue_outer:;
-    //     }
-    // }
-    // fprintf(f, "}\n");
+                    assert_always(creation_token_str.stride == 1);
+                    fprintf(f, " [label=\"%.*s\"];\n", 
+                        (int)creation_token_str.length, creation_token_str.data);
+                }
+                else if (edge->creation_token.type == TokenType::TERMINAL)
+                {
+                    fprintf(f, " [label=\"\'%.*s\'\"];\n", 
+                        (int)creation_token_str.length, creation_token_str.data);
+                }
+                else
+                {
+                    assert_always(false);
+                }
+            }
+
+            continue_outer:;
+        }
+    }
+    fprintf(f, "}\n");
 }
 
 
