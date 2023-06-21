@@ -278,7 +278,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, cons
         {
             I32 lr_index = rule_expand_Bexpr->prod_tokens[rule_expand_Sexpr->dot + 1].lr_item;
 
-            for (Usize i = 0; i < gram->expr_count; ++i)
+            for (U32 i = 0; i < gram->expr_count; ++i)
             {
                 if (gram->exprs[i].non_terminal.lr_item != rule_to_expand.lr_item) continue;
 
@@ -294,7 +294,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, cons
                     }
                 }
 
-                for (Usize j = 0; j < gram->first_sets[lr_index].terminal_count; ++j)
+                for (U32 j = 0; j < gram->first_sets[lr_index].terminal_count; ++j)
                 {
 
                     State_Expression expr = {};
@@ -362,7 +362,7 @@ static void push_all_expressions_from_non_terminal_production(State *state, cons
         }
         else
         {
-            for (Usize i = 0; i < gram->expr_count; ++i)
+            for (U32 i = 0; i < gram->expr_count; ++i)
             {
                 if (gram->exprs[i].non_terminal.lr_item != rule_to_expand.lr_item) continue;
 
@@ -1231,17 +1231,17 @@ Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar 
 
         if (expr->prod_count <= 0)
         {
-            return_with_error(1, "ERROR: starting production cannot be empty");
+            return_with_error(1, "ERROR: starting production cannot be empty\n");
         }
         if (expr->prod_tokens[expr->prod_count - 1].lr_item != (I32)gram->terminals_count - 1)
         {
-            return_with_error(1, "ERROR: starting production has to end with 'End' terminal");
+            return_with_error(1, "ERROR: starting production has to end with 'End' terminal\n");
         }
     }
 
     // create first state by taking the closure of S (starting production)
     {
-        for (Usize i = 0; i < gram->expr_count; ++i)
+        for (U32 i = 0; i < gram->expr_count; ++i)
         {
             const BNFExpression *expr = &gram->exprs[i];
 

@@ -119,19 +119,19 @@ struct StringHeader
 struct ParseTable
 {
     U32 size_in_bytes;
-    // relative to ParseTable 
+    // relative to ParseTable
     U32 string_header_start;
     U32 string_header_count; // should be the same as non terminal count
     U32 string_header_size;
     // relative to ParseTable
-    U32 expr_header_start; 
+    U32 expr_header_start;
     U32 expr_count;
     U32 expr_header_size;
     // relative to ParseTable
     U32 table_start;
     U32 state_count;
     U32 LR_items_count;
-    
+
     U8 data[];
 };
 
@@ -145,7 +145,7 @@ enum class TokenType : U8
 
 struct BNFToken
 {
-    TokenType type; 
+    TokenType type;
     I32 lr_item;
 };
 
@@ -241,7 +241,7 @@ static const char *op_to_str(TableOperationType op)
 
 struct FirstSet
 {
-    Usize terminal_count;
+    U32 terminal_count;
     BNFToken terminals[128];
 };
 
