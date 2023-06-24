@@ -619,9 +619,10 @@ void print_table(ParseTable *table)
 
 
 static void table_set(const Grammar *gram, TableOperation *table, State_Expression **meta_expr_table, Usize table_size,
-    State_Expression *expr, I64 look_ahead_index, Usize state_id, TableOperation op)
+    State_Expression *expr, I32 look_ahead_index, Usize state_id, TableOperation op)
 {
     assert_always(look_ahead_index != -1);
+
 
     Usize index = (Usize)look_ahead_index + state_id * gram->LR_items_count;
     assert_always(index < table_size);(void)table_size;
@@ -846,7 +847,7 @@ ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_lis
         for (Usize j = 0; j < state->expr_count; ++j)
         {
             State_Expression *expr = &state->exprs[j];
-            const BNFExpression *bnf_expr = &gram->exprs[expr->grammar_prod_index];
+            // const BNFExpression *bnf_expr = &gram->exprs[expr->grammar_prod_index];
             State *edge = state->edges[j];
             if (edge == nullptr) continue;
 
@@ -904,30 +905,20 @@ ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_lis
                 op.type = TableOperationType::ACCEPT;
                 op.arg = 0;
                 table_set(gram, table_data, meta_expr_table, table_size,
-                    Sexpr, (I64)gram->terminals_count - 1, state->state_id, op);
+                    Sexpr, (I32)gram->terminals_count - 1, state->state_id, op);
             }
             else if (Sexpr->dot >= Bexpr->prod_count)
             {
                 TableOperation op {};
                 op.type = TableOperationType::REDUCE;
 
-                I64 index = -1;
-                {
-                    for (Usize k = 0; k < gram->expr_count; ++k)
-                    {
-                        if (is_BNFExpression(Bexpr, &gram->exprs[k]))
-                        {
-                            index = (I64)k;
-                            break;
-                        }
-                    }
-                    assert_always(index != -1);
-                }
 
-                op.arg = (U32)index;
-                assert_always(false);
-                // I64 lr_index = get_ir_item_index(gram, expr->look_ahead.data);
-                // table_set(gram, table_data, meta_expr_table, table_size, expr, lr_index, state->state_id, op);
+                op.arg = Sexpr->grammar_prod_index;
+
+                for (Usize k = 0; k < Sexpr->look_ahead_count; ++k)
+                {
+                    table_set(gram, table_data, meta_expr_table, table_size, Sexpr, Sexpr->look_aheads[k].lr_item, state->state_id, op);
+                }
             }
         }
     }
@@ -1380,8 +1371,9 @@ ParseTable *create_parse_table_from_bnf(const char *src)
         return nullptr;
     }
 
-    assert_always(false);
     ParseTable *table = create_parse_table_from_states(gram, state_list, state_count);
+    print_table(table);
+
 
     free(state_list);
     free(gram);

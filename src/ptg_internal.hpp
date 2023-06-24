@@ -287,7 +287,7 @@ I32 get_ir_item_index(const Grammar *lex, String d);
 Errcode parse_bnf_src(Lexer *lex, const char *src);
 Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex);
 
-ParseTable *create_parse_table_from_states(Grammar *lex, State *state_list, U32 state_count);
+ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_list, U32 state_count);
 Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar *gram);
 void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
 
