@@ -418,6 +418,9 @@ static void create_substates_from_state(State *state, State *state_list, U32 *st
         if (active_Bexpr->non_terminal.type == TokenType::EMPTY) continue;
 
 
+        if (active_Bexpr->prod_tokens[active_Sexpr.dot].type == TokenType::EMPTY) continue;
+
+
 
         State *active_substate = &g_active_substate;
         *active_substate = {};
@@ -600,7 +603,7 @@ void print_table(ParseTable *table)
     // print table
     {
         Usize table_height = table->state_count;
-        Usize table_width = table->LR_items_count;
+        Usize table_width = table->LR_items_count - 1;
         TableOperation *table_data = (TableOperation *)(table_bin + table->table_start);
         for (Usize y = 0; y < table_height; ++y)
         {
@@ -621,10 +624,14 @@ void print_table(ParseTable *table)
 static void table_set(const Grammar *gram, TableOperation *table, State_Expression **meta_expr_table, Usize table_size,
     State_Expression *expr, I32 look_ahead_index, Usize state_id, TableOperation op)
 {
-    assert_always(look_ahead_index != -1);
+    assert_always(look_ahead_index >= 0);
+    // ignore starting non terminal
+    if ((U32)look_ahead_index > gram->terminals_count)
+    {
+        look_ahead_index -= 1;
+    }
 
-
-    Usize index = (Usize)look_ahead_index + state_id * gram->LR_items_count;
+    Usize index = (Usize)look_ahead_index + state_id * (gram->LR_items_count - 1);
     assert_always(index < table_size);(void)table_size;
     switch (table[index].type)
     {
@@ -645,7 +652,7 @@ static void table_set(const Grammar *gram, TableOperation *table, State_Expressi
                 printf("\n");
                 fprintf_state_expression(stdout, expr, gram);
                 printf("\n");
-                assert_always(false);
+                assert_always(false && "Fix");
                 exit(1);
             }
             else
@@ -658,7 +665,7 @@ static void table_set(const Grammar *gram, TableOperation *table, State_Expressi
                 fprintf_state_expression(stdout, expr, gram);
                 printf("\n");
                 #endif
-                assert_always(false);
+                assert_always(false && "Fix");
                 // Usize table_expr_precedence = 0;
                 // Usize new_expr_precedence = 0;
                 // {
@@ -719,7 +726,7 @@ static void table_set(const Grammar *gram, TableOperation *table, State_Expressi
 
 ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_list, U32 state_count)
 {
-    Usize table_size = state_count * gram->LR_items_count;
+    Usize table_size = state_count * (gram->LR_items_count - 1);
     State_Expression **meta_expr_table = alloc(State_Expression *, table_size);
     if (meta_expr_table == nullptr) return nullptr;
 
@@ -833,7 +840,6 @@ ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_lis
             }
         }
         assert_always((U8 *)prod_data == prod_start + prods_size_bytes);
-
    }
 
 
@@ -1230,7 +1236,7 @@ Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar 
         }
     }
 
-    // create first state by taking the closure of S (starting production)
+    // create first state by taking the closure of the (starting production)
     {
         for (U32 i = 0; i < gram->expr_count; ++i)
         {
@@ -1255,11 +1261,17 @@ Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar 
 
     for (Usize i = 0; i < *state_count; ++i)
     {
+        create_substates_from_state(&state[i], state_list, state_count, gram);
+    }
+
+
+    for (Usize i = 0; i < *state_count; ++i)
+    {
         fprintf(stderr, "State %llu\n", i);
         fprint_state(stderr, &state[i], gram);
         fprintf(stderr, "\n");
-        create_substates_from_state(&state[i], state_list, state_count, gram);
     }
+
     return 0;
 }
 

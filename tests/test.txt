@@ -1,0 +1,9 @@
+TOKENS
+Id;
+End;
+:
+BNF
+<S> := <E>'End';
+<E> := |'Id';
+:
+
