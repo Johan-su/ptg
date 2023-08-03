@@ -15,18 +15,18 @@ const char *bnf_source =
     "End;"
     ":"
     "BNF"
-    "<S> := <E>;"
+    "<S> := <E>'End';"
     "<E> := 'a' | <E>'t';"
     ":";
 
 
 
-static ParseToken token_list[128] = {};
+static ParseToken token_list[4096] = {};
 static unsigned int token_count = 0;
 
+static char msg[2048];
 
-
-static bool parse_str(const char *str, ParseTable *table)
+static bool parse_str_to_token_list(const char *str)
 {
     token_count = 0;
     int index = 0;
@@ -37,27 +37,24 @@ static bool parse_str(const char *str, ParseTable *table)
         else return false;
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
-
-   return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
+    return true;
 }
 
+#include "common_test.cpp"
 
 int main(void)
 {
-    ParseTable *table = create_parse_table_from_bnf(bnf_source);
-
-    // print_table(table);
+    ParseTable *table = create_and_print_table(bnf_source);
 
 
-
-    assert_always(!parse_str("", table));
-    assert_always(parse_str("a", table));
-    assert_always(!parse_str("t", table));
-    assert_always(parse_str("at", table));
-    assert_always(parse_str("att", table));
-    assert_always(parse_str("atttttttttttttttttttttttttttt", table));
-    assert_always(!parse_str("aaaaat", table));
-    assert_always(!parse_str("ata", table));
-    assert_always(!parse_str("ataatatatatatatatatattttatatataat", table));
+    test_str(table, false, "", "INVALID, 0\nlookahead_lr_index: 2, state: 0\nUnexpected  token");
+    test_str(table, true, "a", "SHIFT, 2\nREDUCE, 1\nACCEPT\n");
+    test_str(table, false, "t", "INVALID, 0\nlookahead_lr_index: 1, state: 0\nUnexpected t token");
+    test_str(table, true, "at", "SHIFT, 2\nREDUCE, 1\nSHIFT, 3\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "att", "SHIFT, 2\nREDUCE, 1\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "atttttttttttttttttttttttttttt", "SHIFT, 2\nREDUCE, 1\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 2\nACCEPT\n");
+    test_str(table, false, "aaaaat", "SHIFT, 2\nINVALID, 0\nlookahead_lr_index: 0, state: 2\nUnexpected a token");
+    test_str(table, false, "ata", "SHIFT, 2\nREDUCE, 1\nSHIFT, 3\nINVALID, 0\nlookahead_lr_index: 0, state: 3\nUnexpected a token");
+    test_str(table, false, "ataatatatatatatatatattttatatataat", "SHIFT, 2\nREDUCE, 1\nSHIFT, 3\nINVALID, 0\nlookahead_lr_index: 0, state: 3\nUnexpected a token");
     printf("Finished %s\n", __FILE__);
 }

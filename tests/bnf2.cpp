@@ -18,7 +18,7 @@ static const char *bnf_source =
     "End;"
     ":"
     "BNF"
-    "<S> := <E>;"
+    "<S> := <E>'End';"
     "<E> := <T>'+'"
         " | <T>;"
     "<T> := <ID>;"
@@ -27,10 +27,12 @@ static const char *bnf_source =
 
 
 
-static ParseToken token_list[128] = {};
+static ParseToken token_list[4096] = {};
 static unsigned int token_count = 0;
+static char msg[2048];
 
-static bool parse_str(const char *str, ParseTable *table)
+
+static bool parse_str_to_token_list(const char *str)
 {
     token_count = 0;
     int index = 0;
@@ -42,18 +44,21 @@ static bool parse_str(const char *str, ParseTable *table)
         else return false;
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
-
-   return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
+    return true;
 }
+
+
+
+#include "common_test.cpp"
 
 int main(void)
 {
-    ParseTable *table = create_parse_table_from_bnf(bnf_source);
-
-    assert_always(parse_str("a+", table));
-    assert_always(parse_str("b+", table));
-    assert_always(!parse_str("", table));
-    assert_always(parse_str("a", table));
-    assert_always(parse_str("b", table));
+    ParseTable *table = create_and_print_table(bnf_source);
+    
+    test_str(table, true, "a+", "SHIFT, 4\nREDUCE, 4\nREDUCE, 3\nSHIFT, 6\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "b+", "SHIFT, 5\nREDUCE, 5\nREDUCE, 3\nSHIFT, 6\nREDUCE, 1\nACCEPT\n");
+    test_str(table, false, "", "INVALID, 0\nlookahead_lr_index: 3, state: 0\nUnexpected  token");
+    test_str(table, true, "a", "SHIFT, 4\nREDUCE, 4\nREDUCE, 3\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "b", "SHIFT, 5\nREDUCE, 5\nREDUCE, 3\nREDUCE, 2\nACCEPT\n");
     printf("Finished %s\n", __FILE__);
 }
