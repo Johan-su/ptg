@@ -28,7 +28,7 @@ typedef int64_t I64;
 struct ParseTable;
 struct ParseToken
 {
-    I64 token_type;
+    I32 token_type;
     const char *data;
     U32 length;
     U8 stride;
@@ -56,8 +56,8 @@ PTG_DEFINE bool parse(const ParseToken *token_list, U32 token_count, const Parse
 // returns true on successfull parse, otherwise false
 PTG_DEFINE bool parse_bin(const ParseToken *token_list, U32 token_count, const U8 *table, U32 flags, Expr **opt_tree_out, char *opt_error_msg_out, Usize msg_buf_size);
 
-PTG_DEFINE U32 get_table_size(ParseTable *table);
-PTG_DEFINE void print_table(ParseTable *table);
+PTG_DEFINE U32 get_table_size(const ParseTable *table);
+PTG_DEFINE void print_table(const ParseTable *table);
 
 PTG_DEFINE const char *get_last_error();
 

@@ -56,100 +56,137 @@ static void move_past_whitespace(const char *src, Usize *cursor)
 }
 
 
-bool is_bnf_token(BNFToken b0, BNFToken b1)
-{
-    if (b0.lr_item != b1.lr_item) return false;
-    if (b0.type != b1.type) return false;
+// bool is_bnf_token(BNFToken b0, BNFToken b1)
+// {
+//     if (b0.lr_item != b1.lr_item) return false;
+//     if (b0.type != b1.type) return false;
 
-    return true;
-}
-
-
-static void add_element_to_first_set(FirstSet *first_array, I32 non_terminal_index, BNFToken terminal)
-{
-    assert_always(terminal.type == TokenType::TERMINAL);
-    FirstSet *set = &first_array[non_terminal_index];
+//     return true;
+// }
 
 
-    for (Usize i = 0; i < set->terminal_count; ++i)
-    {
-        // skip adding if the terminal is already in the set
-        if (is_bnf_token(set->terminals[i], terminal))
-        {
-            return;
-        }
-    }
-    set->terminals[set->terminal_count++] = terminal;
-}
-
-
-
+//TODO(Johan) simplify if possible
 static void set_first(Grammar *gram)
 {
-    Usize stack_size = 2048;
-    BNFToken *non_terminal_stack = alloc(BNFToken, stack_size);
-    Usize stack_count = stack_size;
-
+    Stack<I32> lr_stack; init_stack(&lr_stack);
     bool *checked_table = alloc(bool, gram->LR_items_count);
 
     for (I32 i = 0; i < (I32)gram->terminals_count; ++i)
     {
-        for (Usize j = 0; j < gram->LR_items_count; ++j)
-        {
-            checked_table[j] = false;
-        }
+        checked_table[i] = true;
+        gram->first_sets[i].terminals[i] = true;
+    }
 
-        for (Usize j = 0; j < gram->expr_count; ++j)
+    // push the starting S non terminal
+    push(&lr_stack, (I32)gram->terminals_count);
+    checked_table[(I32)gram->terminals_count] = true;
+
+    while (true)
+    {
+        assert_debug(lr_stack.count > 0);
+        I32 lr_top = lr_stack.data[lr_stack.count - 1];
+
+        bool pushed_non_terminals = false;
+
+        for (Usize i = 0; i < gram->expr_count; ++i)
         {
-            BNFExpression *expr = &gram->exprs[j];
-            if (expr->prod_count > 0 && expr->prod_tokens[0].lr_item == i)
+            BNFExpression *expr = &gram->exprs[i];
+
+            if (expr->non_terminal != lr_top) continue;
+
+
+            for (Usize j = 0; j < expr->prod_count ; ++j)
             {
-                assert_debug(stack_count > 0);
-                non_terminal_stack[--stack_count] = expr->non_terminal;
-            }
-        }
+                I32 token = expr->prod_tokens[j];
+                if (!is_non_terminal(token, gram)) continue;
 
-        while (stack_count < stack_size)
-        {
-            BNFToken non_terminal = non_terminal_stack[stack_count++];
-            // TODO(Johan) probably not correct if condition
-            if (non_terminal.type == TokenType::EMPTY) goto end;
-
-            // TODO(Johan) maybe remove this check somehow
-            // if (is_str(make_string("S"), non_terminal)) continue;
-            // assert_always(false);
-
-            I32 lr_index = non_terminal.lr_item;
-            assert_always(lr_index != -1);
-
-            if (checked_table[lr_index]) continue;
-
-            BNFToken terminal = gram->LR_items[i];
-            add_element_to_first_set(gram->first_sets, lr_index, terminal);
-
-            for (Usize j = 0; j < gram->expr_count; ++j)
-            {
-                BNFExpression *expr = &gram->exprs[j];
-                if (expr->prod_count > 0 && expr->prod_tokens[0].lr_item == non_terminal.lr_item)
+                if (!checked_table[token])
                 {
-                    assert_debug(stack_count > 0);
-                    non_terminal_stack[--stack_count] = expr->non_terminal;
+                    push(&lr_stack, token);
+                    checked_table[token] = true;
+                    pushed_non_terminals = true;
                 }
             }
-
-            checked_table[lr_index] = true;
+        }
+        if (!pushed_non_terminals)
+        {
+            break;
         }
     }
 
-
-    for (I32 i = 0; i < (I32)gram->terminals_count; ++i)
+    while (lr_stack.count > 0)
     {
-        add_element_to_first_set(gram->first_sets, i, gram->LR_items[i]);
+        I32 active_non_terminal = pop(&lr_stack);
+        assert_debug(active_non_terminal >= (I32)gram->terminals_count);
+        
+        FirstSet *set = &gram->first_sets[active_non_terminal];
+
+        // check if non terminal produces empty set
+        for (Usize i = 0; i < gram->expr_count; ++i)
+        {
+            BNFExpression *expr = &gram->exprs[i];
+
+            if (active_non_terminal != expr->non_terminal) continue;
+
+            if (expr->prod_count == 0)
+            {
+                set->produces_empty_set = true;
+                goto break_outer;
+            }
+        } break_outer:;
+
+
+        // add first possible terminals to first set
+        for (Usize i = 0; i < gram->expr_count; ++i)
+        {
+            BNFExpression *expr = &gram->exprs[i];
+
+            if (active_non_terminal != expr->non_terminal) continue;
+
+            if (expr->prod_count == 0)
+            {
+
+            }
+            else if (is_terminal(expr->prod_tokens[0], gram))
+            {
+                set->terminals[expr->prod_tokens[0]] = true;
+            }
+            else
+            {
+                for (Usize j = 0; j < expr->prod_count; ++j)
+                {
+                    I32 prod_token = expr->prod_tokens[j];
+                    if (is_non_terminal(prod_token, gram))
+                    {
+                        for (Usize k = 0; k < gram->terminals_count; ++k)
+                        {
+                            if (gram->first_sets[prod_token].terminals[k])
+                            {
+                                set->terminals[k] = true;
+                            }
+                        }
+                        if (!gram->first_sets[prod_token].produces_empty_set)
+                        {
+                            break;
+                        }
+                    }
+                    else if (is_terminal(prod_token, gram))
+                    {
+                        set->terminals[prod_token] = true;
+                        break;
+                    }
+                    else
+                    {
+                        assert_always(false && "unreachable");
+                    }
+                }
+
+            }
+        }
     }
 
-    end:
     free(checked_table);
-    free(non_terminal_stack);
+    free_stack(&lr_stack);
 }
 
 
@@ -168,20 +205,12 @@ static void add_to_gram_if_unique(Grammar *gram, Lex_Token token)
     {
         if (token.kind == TOKEN_KIND::TERMINAL_ID)
         {
-            gram->LR_items[gram->LR_items_count] = BNFToken {
-                .type = TokenType::TERMINAL,
-                .lr_item = (I32)gram->LR_items_count,
-            };
             gram->LR_items_str[gram->LR_items_count] = token.str;
             gram->LR_items_count += 1;
             gram->terminals_count += 1;
         }
         else if (token.kind == TOKEN_KIND::NON_TERMINAL_ID)
         {
-            gram->LR_items[gram->LR_items_count] = BNFToken {
-                .type = TokenType::NONTERMINAL,
-                .lr_item = (I32)gram->LR_items_count,
-            };
             gram->LR_items_str[gram->LR_items_count] = token.str;
             gram->LR_items_count += 1;
         }
@@ -191,7 +220,6 @@ static void add_to_gram_if_unique(Grammar *gram, Lex_Token token)
         }
     }
 }
-
 static const char *TOKEN_KIND_to_str(TOKEN_KIND kind)
 {
     switch (kind)
@@ -235,7 +263,7 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
         Usize start_non_terminal = i;
         U32 prod_count = 0;
         BNFExpression *expr = &gram->exprs[gram->expr_count++];
-        expr->non_terminal = BNFToken {.type = TokenType::NONTERMINAL, .lr_item = non_terminal_index};
+        expr->non_terminal = non_terminal_index;
 
         while (i < lex->count)
         {
@@ -286,17 +314,8 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
         }
         break_loop1:;
 
-        if (prod_count == 0)
         {
-            expr->prod_tokens = alloc(BNFToken, 1);
-            expr->prod_tokens[expr->prod_count].type = TokenType::EMPTY;
-            expr->prod_tokens[expr->prod_count].lr_item = -10000;
-            expr->prod_count += 1;
-
-        }
-        else
-        {
-            expr->prod_tokens = alloc(BNFToken, prod_count);
+            expr->prod_tokens = alloc(I32, prod_count);
         }
 
         for (Usize j = start_non_terminal; j < start_non_terminal + prod_count; ++j)
@@ -310,14 +329,19 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
                 } break;
                 case TOKEN_KIND::TERMINAL_ID:
                 {
-                    expr->prod_tokens[expr->prod_count++] = BNFToken {.type = TokenType::TERMINAL, .lr_item = get_ir_item_index(gram, token.str)};
+                    I32 lr_item = get_ir_item_index(gram, token.str);
+                    if (lr_item == -1)
+                    {
+                        assert_always(token.str.stride == 1);
+                        return_with_error(1, "Terminal '%.*s' not declared under TOKENS\n", (int)token.str.length, token.str.data);
+                    }
+                    expr->prod_tokens[expr->prod_count++] = lr_item;
                 } break;
                 case TOKEN_KIND::NON_TERMINAL_ID:
                 {
                     assert_always(j + 1 < lex->count);
                     assert_always(lex->tokens[j + 1].kind != TOKEN_KIND::ASSIGNMENT);
-                    expr->prod_tokens[expr->prod_count++] =
-                        BNFToken {.type = TokenType::NONTERMINAL, .lr_item = get_ir_item_index(gram, token.str)};
+                    expr->prod_tokens[expr->prod_count++] = get_ir_item_index(gram, token.str);
                 } break;
                 case TOKEN_KIND::ASSIGNMENT:
                 {
@@ -339,9 +363,9 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
         {
             goto end;
         }
-        // i += 1;
     }
     end:;
+
     gram->first_sets = alloc(FirstSet, gram->LR_items_count);
     set_first(gram);
     return 0;

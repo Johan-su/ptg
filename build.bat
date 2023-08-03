@@ -31,8 +31,8 @@ cd ..
 
 echo Test: > build/tests/bnf_text.txt 2>&1
 
-@REM %CLANG% src/ptg.cpp tests/bnf1.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf1.exe && "build/tests/bnf1.exe" >> build/tests/bnf_text.txt 2>&1
-@REM %CLANG% src/ptg.cpp tests/bnf2.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf2.exe && "build/tests/bnf2.exe" >> build/tests/bnf_text.txt 2>&1 
+%CLANG% src/ptg.cpp tests/bnf1.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf1.exe && "build/tests/bnf1.exe" >> build/tests/bnf_text.txt 2>&1
+%CLANG% src/ptg.cpp tests/bnf2.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf2.exe && "build/tests/bnf2.exe" >> build/tests/bnf_text.txt 2>&1 
 @REM %CLANG% src/ptg.cpp tests/bnf3.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf3.exe && "build/tests/bnf3.exe" >> build/tests/bnf_text.txt 2>&1
 @REM %CLANG% src/ptg.cpp tests/bnf4.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf4.exe && "build/tests/bnf4.exe" >> build/tests/bnf_text.txt 2>&1
 @REM %CLANG% src/ptg.cpp tests/bnf5.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf5.exe && "build/tests/bnf5.exe" >> build/tests/bnf_text.txt 2>&1
@@ -40,7 +40,8 @@ echo Test: > build/tests/bnf_text.txt 2>&1
 @REM %CLANG% src/ptg.cpp tests/bnf7.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf7.exe && "build/tests/bnf7.exe" >> build/tests/bnf_text.txt 2>&1
 @REM %CLANG% src/ptg.cpp tests/bnf8.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf8.exe && "build/tests/bnf8.exe" >> build/tests/bnf_text.txt 2>&1
 @REM %CLANG% src/ptg.cpp tests/bnf9.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf9.exe && "build/tests/bnf9.exe" >> build/tests/bnf_text.txt 2>&1
-%CLANG% src/ptg.cpp tests/bnf10.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf10.exe && "build/tests/bnf10.exe" >> build/tests/bnf_text.txt 2>&1
+@REM %CLANG% src/ptg.cpp tests/bnf10.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf10.exe && "build/tests/bnf10.exe" >> build/tests/bnf_text.txt 2>&1
+@REM %CLANG% src/ptg.cpp tests/bnf11.cpp %FLAGS% -Wno-unused-function -o build/tests/bnf11.exe && "build/tests/bnf11.exe" >> build/tests/bnf_text.txt 2>&1
 
 
 type "build\tests\bnf_text.txt" 

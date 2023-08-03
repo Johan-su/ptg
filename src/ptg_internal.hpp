@@ -17,6 +17,8 @@ typedef int32_t I32;
 typedef int64_t I64;
 
 
+#define EMPTY_LR (-10000)
+
 struct [[nodiscard]] Errcode
 {
     int code;
@@ -103,7 +105,7 @@ struct String
 
 struct ParseExpr
 {
-    I64 non_terminal;
+    I32 non_terminal;
     U32 production_count;
     // relative to ParseTable
     U32 prod_start;
@@ -135,26 +137,12 @@ struct ParseTable
     U8 data[];
 };
 
-enum class TokenType : U8
-{
-    INVALID,
-    EMPTY,
-    TERMINAL,
-    NONTERMINAL,
-};
-
-struct BNFToken
-{
-    TokenType type;
-    I32 lr_item;
-};
-
 struct BNFExpression
 {
-    BNFToken non_terminal;
+    I32 non_terminal;
 
     U32 prod_count;
-    BNFToken *prod_tokens;
+    I32 *prod_tokens;
 };
 
 
@@ -162,13 +150,12 @@ struct State_Expression
 {
     U32 dot;
     U32 grammar_prod_index;
-    U32 look_ahead_count;
-    BNFToken look_aheads[128];
+    bool look_aheads[128]; // change to flexible array member of bools maybe
 };
 
 struct State
 {
-    BNFToken creation_token;
+    I32 creation_token;
     U32 state_id;
     U32 expr_count;
     State *edges[512];
@@ -177,7 +164,7 @@ struct State
 
 
 
-enum class TableOperationType
+enum class TableOperationType : U8
 {
     INVALID,
     SHIFT,
@@ -222,6 +209,20 @@ static bool is_str(String s0, String s1)
     return true;
 }
 
+static const char *op_to_str_short_color(TableOperationType op)
+{
+    switch (op)
+    {
+        case TableOperationType::INVALID: return "I";
+        case TableOperationType::SHIFT: return "\x1b[34mS\x1b[0m";
+        case TableOperationType::REDUCE: return "\x1b[31mR\x1b[0m";
+        case TableOperationType::GOTO: return "\x1b[32mG\x1b[0m";
+        case TableOperationType::ACCEPT: return "A";
+
+        default: assert_always(false);
+    }
+    return nullptr;
+}
 
 static const char *op_to_str(TableOperationType op)
 {
@@ -241,8 +242,8 @@ static const char *op_to_str(TableOperationType op)
 
 struct FirstSet
 {
-    U32 terminal_count;
-    BNFToken terminals[128];
+    bool produces_empty_set;
+    bool terminals[128]; //TODO(Johan) change to a flexible array member
 };
 
 struct Grammar
@@ -252,7 +253,7 @@ struct Grammar
 
     U32 terminals_count;
     U32 LR_items_count;
-    BNFToken LR_items[128];
+    // BNFToken LR_items[128];
     String LR_items_str[128];
 
     FirstSet *first_sets;
@@ -282,14 +283,56 @@ struct Lexer
     Lex_Token tokens[1024];
 };
 
-bool is_bnf_token(BNFToken b0, BNFToken b1);
+
+template<typename T>
+struct Stack
+{
+    Usize capacity;
+    Usize count;
+    T *data;
+};
+template<typename T>
+static void init_stack(Stack<T> *stack)
+{
+    stack->capacity = 10;
+    stack->count = 0;
+    stack->data = alloc(T, stack->capacity);
+}
+template<typename T>
+static void free_stack(Stack<T> *stack)
+{
+    free(stack->data);
+    stack->capacity = 0;
+    stack->count = 0;
+    stack->data = nullptr;
+}
+template<typename T>
+static void push(Stack<T> *stack, T data)
+{
+    if (stack->capacity < stack->count + 1)
+    {
+        stack->capacity = 3 * stack->capacity / 2;
+        stack->data = (T *)realloc(stack->data, stack->capacity * sizeof(T));
+    }
+    stack->data[stack->count++] = data;
+}
+
+template<typename T>
+static T pop(Stack<T> *stack)
+{
+    assert_debug(stack->count > 0);
+    return stack->data[--stack->count];
+}
+
+
+
 I32 get_ir_item_index(const Grammar *lex, String d);
 Errcode parse_bnf_src(Lexer *lex, const char *src);
 Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex);
 
 ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_list, U32 state_count);
 Errcode create_all_substates(State *state_list, U32 *state_count, const Grammar *gram);
-void graph_from_state_list(FILE *f, State *state_list, Usize state_count);
+void graph_from_state_list(FILE *f, const State *state_list, Usize state_count, const Grammar *gram);
 
 void fprint_state(FILE *stream, const State *state, const Grammar *gram);
 bool print_formated(const char *format, ...);
