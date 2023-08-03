@@ -1,0 +1,10 @@
+TOKENS
++;
+Number;
+End;
+:
+BNF
+<S> := <E>'End' | 'End';
+<E> := 'Number' | <E> '+' <E>;
+:
+

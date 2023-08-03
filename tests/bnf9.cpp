@@ -237,14 +237,6 @@ static const char *create_wide_string(const char *str)
     return new_str;
 }
 
-bool is_cstr(const char *str1, const char *str2)
-{
-    if (*str1++ != *str2++) return false;
-
-    return true;
-}
-
-
 int main(void)
 {
     ParseTable *table = create_parse_table_from_bnf(bnf_source);

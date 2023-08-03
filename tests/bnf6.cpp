@@ -16,13 +16,15 @@ static const char *bnf_source =
     "End;"
     ":"
     "BNF"
-    "<S> := <E>;"
+    "<S> := <E>'End';"
     "<E> := <T>'+'<E> | <T>;"
     "<T> := 'I';"
     ":";
 
 static ParseToken token_list[128] = {};
 static unsigned int token_count = 0;
+
+static char error_msg[2048] = {};
 
 static bool parse_str(const char *str, ParseTable *table)
 {
@@ -36,30 +38,22 @@ static bool parse_str(const char *str, ParseTable *table)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
-   return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
+   bool success = parse(token_list, token_count, table, PRINT_EVERY_PARSE_STEP_FLAG, nullptr, error_msg, sizeof(error_msg));
+   fprintf(stderr, "%s\n", error_msg);
+   return success;
 }
 
 
 int main(void)
 {
+    ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
-    ParseTable *table;
+    if (table == nullptr)
     {
-        Grammar *lex = alloc(Grammar, 1);
-        assert_always(parse_bnf_src(lex, bnf_source) == 0);
-        State *state_list = alloc(State, 1024);
-        U32 state_count;
-        create_all_substates(state_list, &state_count, lex);
-        // for (Usize i = 0; i < state_count; ++i)
-        // {
-        //     printf("STATE %llu ------\n", i);
-        //     fprint_state(stdout, &state_list[i]);
-        // 
-        table = create_parse_table_from_states(lex, state_list, state_count); 
-
-        free(lex);
-        free(state_list);
+        fprintf(stderr, "%s\n", get_last_error());
     }
+
+    assert_always(table != nullptr);
 
     print_table(table);
 
