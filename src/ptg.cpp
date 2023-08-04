@@ -34,7 +34,14 @@ const char *get_last_error()
     return g_msg_buffer;
 }
 
+Usize get_error_size()
+{
+    Usize c = 0;
 
+    while (g_msg_buffer[c] != '\0') c += 1;
+
+    return c;
+}
 
 
 __attribute__((format(printf, 1, 2)))
@@ -1371,20 +1378,30 @@ bool graphviz_from_syntax_tree(const char *file_path, Expr *tree_list)
     return true;
 }
 
-U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src)
+bool write_parse_table_from_bnf(void *buffer, U32 *buffer_size, const char *src)
 {
     assert_debug(buffer != nullptr);
+    assert_debug(buffer_size != nullptr);
+    assert_debug(src != nullptr);
     ParseTable *table = create_parse_table_from_bnf(src);
-    U32 table_size = table->size_in_bytes;
-    U32 return_val = 0;
-    if (table_size > buffer_size)
+    if (table == nullptr)
     {
-        return_val = table_size - buffer_size;
+        return false;
+    }
+
+    bool return_val = true;
+    U32 table_size = table->size_in_bytes;
+    if (table_size > *buffer_size)
+    {
+        *buffer_size = table_size - *buffer_size;
+        print_formated("Buffer smaller than table");
+        return_val = false;   
     }
     else
     {
         memcpy(buffer, table, table_size);
     }
+
     free(table);
     return return_val;
 }

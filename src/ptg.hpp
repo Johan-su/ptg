@@ -41,8 +41,8 @@ struct Expr
 };
 
 
-// returns 0 on success, otherwise returns the difference between table size and buffer size
-PTG_DEFINE U32 write_parse_table_from_bnf(void *buffer, U32 buffer_size, const char *src);
+// returns true on success, otherwise false. write the remaining size necessary to buffer_size incase of a too small buffer
+PTG_DEFINE bool write_parse_table_from_bnf(void *buffer, U32 *buffer_size, const char *src);
 // returns null on failure
 PTG_DEFINE ParseTable *create_parse_table_from_bnf(const char *src);
 
@@ -60,5 +60,6 @@ PTG_DEFINE U32 get_table_size(const ParseTable *table);
 PTG_DEFINE void print_table(const ParseTable *table);
 
 PTG_DEFINE const char *get_last_error();
+PTG_DEFINE Usize get_error_size();
 
 #endif
