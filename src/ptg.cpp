@@ -708,10 +708,12 @@ void print_table(const ParseTable *table)
             for (Usize x = 0; x < table_width; ++x)
             {
                 TableOperation *op = row + x;
-
                 printf("[%s %2u] ", op_to_str_short_color(op->type), op->arg);
             }
             printf("\n");
+            // flush is needed here because if stdout is a file then \n does not flush (that is the theory atleast).
+            // Which causes the internal printf buffer to get full.
+            fflush(stdout);
         }
     }
 }

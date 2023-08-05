@@ -35,16 +35,18 @@ static const char *bnf_source =
     "End;"
     ":"
     "BNF"
-    "<S> := <E>;"
+    "<S> := <E>'End';"
     "<E> := <E>'+'<E> | "
          "'0' | '1' | '2' |'3' |'4' | '5' | '6' | '7' | '8' | '9' | ;"
     ":";
 
 
-static ParseToken token_list[128] = {};
+static ParseToken token_list[4096] = {};
 static unsigned int token_count = 0;
+static char msg[2048];
 
-static bool parse_str(const char *str, ParseTable *table)
+
+static bool parse_str_to_token_list(const char *str)
 {
     token_count = 0;
     int index = 0;
@@ -65,22 +67,24 @@ static bool parse_str(const char *str, ParseTable *table)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
-   return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
+    return true;
 }
 
-
+#include "common_test.cpp"
 
 int main(void)
 {
-    ParseTable *table = create_parse_table_from_bnf(bnf_source);
 
-    assert_always(parse_str("", table));
-    assert_always(parse_str("1+1", table));
-    assert_always(parse_str("5+1", table));
-    assert_always(parse_str("5+4+3+2+1", table));
-    assert_always(parse_str("+4+3+2+", table));
-    assert_always(parse_str("+", table));
-    assert_always(!parse_str("00", table));
-    assert_always(!parse_str("5120412505721057214901279+4", table));
+    ParseTable *table = create_and_print_table(bnf_source);
+
+    test_str(table, true, "", "REDUCE, 12\nACCEPT\n");
+    test_str(table, true, "1+1", "SHIFT, 3\nREDUCE, 3\nSHIFT, 12\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "5+1", "SHIFT, 7\nREDUCE, 7\nSHIFT, 12\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "5+4+3+2+1", "SHIFT, 7\nREDUCE, 7\nSHIFT, 12\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 12\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 12\nSHIFT, 4\nREDUCE, 4\nREDUCE, 1\nSHIFT, 12\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "+4+3+2+", "REDUCE, 12\nSHIFT, 12\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 12\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 12\nSHIFT, 4\nREDUCE, 4\nREDUCE, 1\nSHIFT, 12\nREDUCE, 12\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "+", "REDUCE, 12\nSHIFT, 12\nREDUCE, 12\nREDUCE, 1\nACCEPT\n");
+    test_str(table, false, "00", "SHIFT, 2\nINVALID, 0\nlookahead_lr_index: 1, state: 2\nUnexpected 0 token");
+    test_str(table, false, "5120412505721057214901279+4", "SHIFT, 7\nINVALID, 0\nlookahead_lr_index: 2, state: 7\nUnexpected 1 token");
+
     printf("Finished %s\n", __FILE__);
 }

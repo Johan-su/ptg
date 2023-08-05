@@ -190,36 +190,6 @@ static void set_first(Grammar *gram)
 }
 
 
-static void add_to_gram_if_unique(Grammar *gram, Lex_Token token)
-{
-    bool already_exists = false;
-    for (Usize i = 0; i < gram->LR_items_count; ++i)
-    {
-        if (is_str(gram->LR_items_str[i], token.str))
-        {
-            already_exists = true;
-            break;
-        }
-    }
-    if (!already_exists)
-    {
-        if (token.kind == TOKEN_KIND::TERMINAL_ID)
-        {
-            gram->LR_items_str[gram->LR_items_count] = token.str;
-            gram->LR_items_count += 1;
-            gram->terminals_count += 1;
-        }
-        else if (token.kind == TOKEN_KIND::NON_TERMINAL_ID)
-        {
-            gram->LR_items_str[gram->LR_items_count] = token.str;
-            gram->LR_items_count += 1;
-        }
-        else
-        {
-            assert_always(false);
-        }
-    }
-}
 static const char *TOKEN_KIND_to_str(TOKEN_KIND kind)
 {
     switch (kind)
@@ -235,6 +205,48 @@ static const char *TOKEN_KIND_to_str(TOKEN_KIND kind)
     return nullptr;
 }
 
+static bool token_in_gram(const Grammar *gram, Lex_Token token)
+{
+    bool already_exists = false;
+    for (Usize i = 0; i < gram->LR_items_count; ++i)
+    {
+        if (is_str(gram->LR_items_str[i], token.str))
+        {
+            already_exists = true;
+            break;
+        }
+    } 
+    return already_exists;
+}
+
+
+static Errcode add_to_gram_if_unique_or_error(Grammar *gram, Lex_Token token)
+{
+    if (token_in_gram(gram, token))
+    {
+        assert_debug(token.str.stride == 1);
+        return_with_error(1, "Repeat declaration of %s %.*s ", TOKEN_KIND_to_str(token.kind), (int)token.str.length, token.str.data);
+    }
+
+    if (token.kind == TOKEN_KIND::TERMINAL_ID)
+    {
+        gram->LR_items_str[gram->LR_items_count] = token.str;
+        gram->LR_items_count += 1;
+        gram->terminals_count += 1;
+    }
+    else if (token.kind == TOKEN_KIND::NON_TERMINAL_ID)
+    {
+        gram->LR_items_str[gram->LR_items_count] = token.str;
+        gram->LR_items_count += 1;
+    }
+    else
+    {
+        assert_always(false);
+    }
+    return 0;
+}
+
+
 Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
 {
     memset(gram, 0, sizeof(*gram));
@@ -243,9 +255,22 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
     // terminals
     do
     {
-        add_to_gram_if_unique(gram, lex->tokens[i]);
+        TRY(add_to_gram_if_unique_or_error(gram, lex->tokens[i]));
         i += 1;
     } while (lex->tokens[i].kind == TOKEN_KIND::TERMINAL_ID);
+
+
+    // non terminals
+    {
+        for (Usize j = i; lex->tokens[j].kind != TOKEN_KIND::END; ++j)
+        {
+            if (lex->tokens[j - 1].kind == TOKEN_KIND::NON_TERMINAL_ID && 
+                lex->tokens[j].kind == TOKEN_KIND::ASSIGNMENT)
+            {
+                TRY(add_to_gram_if_unique_or_error(gram, lex->tokens[j - 1]));
+            }
+        }
+    }
 
 
     Lex_Token non_terminal = lex->tokens[i];
@@ -253,7 +278,7 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
     i += 1;
     assert_always(lex->tokens[i].kind == TOKEN_KIND::ASSIGNMENT);
     i += 1;
-    add_to_gram_if_unique(gram, non_terminal);
+    assert_debug(token_in_gram(gram, non_terminal));
     I32 non_terminal_index = get_ir_item_index(gram, non_terminal.str);
 
     bool return_at_end = false;
@@ -284,14 +309,22 @@ Errcode grammar_from_lexer(Grammar *gram, const Lexer *lex)
                     if (lex->tokens[i + 1].kind == TOKEN_KIND::ASSIGNMENT)
                     {
                         non_terminal = lex->tokens[i];
-                        add_to_gram_if_unique(gram, non_terminal);
+                        if (!token_in_gram(gram, non_terminal))
+                        {
+                            assert_debug(non_terminal.str.stride == 1);
+                            return_with_error(1, "Undeclared token %.*s use | for multiple productions\n", (int)non_terminal.str.length, non_terminal.str.data);
+                        }
                         non_terminal_index = get_ir_item_index(gram, non_terminal.str);
                         i += 2;
                         goto break_loop1;
                     }
                     else
                     {
-                        add_to_gram_if_unique(gram, lex->tokens[i]);
+                        if (!token_in_gram(gram, lex->tokens[i]))
+                        {
+                            assert_debug(lex->tokens[i].str.stride == 1);
+                            return_with_error(1, "Undeclared token %.*s use | for multiple productions\n", (int)lex->tokens[i].str.length, lex->tokens[i].str.data);
+                        }                        
                         prod_count += 1;
                         i += 1;
                     }

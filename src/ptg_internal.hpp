@@ -217,6 +217,21 @@ static const char *op_to_str_short_color(TableOperationType op)
         case TableOperationType::SHIFT: return "\x1b[34mS\x1b[0m";
         case TableOperationType::REDUCE: return "\x1b[31mR\x1b[0m";
         case TableOperationType::GOTO: return "\x1b[32mG\x1b[0m";
+        case TableOperationType::ACCEPT: return "\x1b[36mA\x1b[0m";
+
+        default: assert_always(false);
+    }
+    return nullptr;
+}
+
+static const char *op_to_str_short(TableOperationType op)
+{
+    switch (op)
+    {
+        case TableOperationType::INVALID: return "I";
+        case TableOperationType::SHIFT: return "S";
+        case TableOperationType::REDUCE: return "R";
+        case TableOperationType::GOTO: return "G";
         case TableOperationType::ACCEPT: return "A";
 
         default: assert_always(false);

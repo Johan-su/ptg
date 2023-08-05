@@ -5,17 +5,17 @@
 
 enum Token
 {
-    // TOKEN_plus,
-    // TOKEN_minus,
-    // TOKEN_times,
-    // TOKEN_divide,
-    // TOKEN_caret,
-    // TOKEN_equal,
+    TOKEN_plus,
+    TOKEN_minus,
+    TOKEN_times,
+    TOKEN_divide,
+    TOKEN_caret,
+    TOKEN_equal,
     TOKEN_open,
     TOKEN_close,
     TOKEN_Number,
-    // TOKEN_Id,
-    // TOKEN_Sep,
+    TOKEN_Id,
+    TOKEN_Sep,
     TOKEN_End,
 };
 
@@ -65,7 +65,7 @@ static bool parse_str_to_token_list(const char *str)
             }
             index += count - 1;
 
-            // token_list[token_count++] = {TOKEN_Id, start, count, 1};
+            token_list[token_count++] = {TOKEN_Id, start, count, 1};
         }
         else if (is_number(str[index]))
         {
@@ -79,12 +79,12 @@ static bool parse_str_to_token_list(const char *str)
 
             token_list[token_count++] = {TOKEN_Number, start, count, 1};
         }
-        // else if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1, 1};
-        // else if (str[index] == '-') token_list[token_count++] = {TOKEN_minus, &str[index], 1, 1};
-        // else if (str[index] == '*') token_list[token_count++] = {TOKEN_times, &str[index], 1, 1};
-        // else if (str[index] == '/') token_list[token_count++] = {TOKEN_divide, &str[index], 1, 1};
-        // else if (str[index] == '^') token_list[token_count++] = {TOKEN_caret, &str[index], 1, 1};
-        // else if (str[index] == '=') token_list[token_count++] = {TOKEN_equal, &str[index], 1, 1};
+        else if (str[index] == '+') token_list[token_count++] = {TOKEN_plus, &str[index], 1, 1};
+        else if (str[index] == '-') token_list[token_count++] = {TOKEN_minus, &str[index], 1, 1};
+        else if (str[index] == '*') token_list[token_count++] = {TOKEN_times, &str[index], 1, 1};
+        else if (str[index] == '/') token_list[token_count++] = {TOKEN_divide, &str[index], 1, 1};
+        else if (str[index] == '^') token_list[token_count++] = {TOKEN_caret, &str[index], 1, 1};
+        else if (str[index] == '=') token_list[token_count++] = {TOKEN_equal, &str[index], 1, 1};
         else if (str[index] == '(') token_list[token_count++] = {TOKEN_open, &str[index], 1, 1};
         else if (str[index] == ')') token_list[token_count++] = {TOKEN_close, &str[index], 1, 1};
         else if (is_whitespace(str[index])) {}
@@ -109,27 +109,28 @@ static char *file_to_str(const char *file_path);
 
 int main(void)
 {
-    char *bnf_source = file_to_str("./tests/test.txt");
+    char *bnf_source = file_to_str("./tests/bnf10.txt");
     assert_always(bnf_source != nullptr);
 
     ParseTable *table = create_and_print_table(bnf_source);
+    assert_always(false && "remove");
     free(bnf_source);
 
 
 
 
 
-    test_str("", true, "", table);
-    test_str("()", false, "Unexpected ) token", table);
-    test_str("1+1", true, "", table);
-    test_str("1*1", true, "", table);
-    test_str("1/1", true, "", table);
-    test_str("1-1", true, "", table);
-    test_str("-1+1", true, "", table);
-    test_str("--1*1", true, "", table);
-    test_str("--1^1^5", true, "", table);
-    test_str("a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", true, "", table);
-    test_str("++++1", true, "nullptr", table);
+    test_str(table, true, "", "");
+    test_str(table, false, "()", "Unexpected ) token");
+    test_str(table, true, "1+1", "");
+    test_str(table, true, "1*1", "");
+    test_str(table, true, "1/1", "");
+    test_str(table, true, "1-1", "");
+    test_str(table, true, "-1+1", "");
+    test_str(table, true, "--1*1", "");
+    test_str(table, true, "--1^1^5", "");
+    test_str(table, true, "a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", "");
+    test_str(table, true, "++++1", "nullptr");
 
     fprintf(stderr, "%.*s\n", (int)sizeof(msg), msg);
     fprintf(stderr, "Finished %s\n", __FILE__);
