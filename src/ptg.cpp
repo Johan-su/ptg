@@ -837,7 +837,11 @@ ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_lis
     parse_table_size += prods_size_bytes;
 
     ParseTable *parse_table = (ParseTable *)calloc(1, parse_table_size);
-    if (parse_table == nullptr) return nullptr;
+    if (parse_table == nullptr)
+    {
+        free(meta_expr_table);
+        return nullptr;
+    }
 
 
 
@@ -998,7 +1002,7 @@ ParseTable *create_parse_table_from_states(const Grammar *gram, State *state_lis
             }
         }
     }
-
+    free(meta_expr_table);
     return parse_table;
 }
 
