@@ -33,16 +33,18 @@ static const char *bnf_source =
     "End;"
     ":"
     "BNF"
-    "<S> := <Number>;"
+    "<S> := <Number>'End';"
     "<Number> := <Number><Digit> | <Digit>;"
     "<Digit> := '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';"
     ":";
 
 
-static ParseToken token_list[128] = {};
+static ParseToken token_list[4096] = {};
 static unsigned int token_count = 0;
+static char msg[2048];
 
-static bool parse_str(const char *str, ParseTable *table)
+
+static bool parse_str_to_token_list(const char *str)
 {
     token_count = 0;
     int index = 0;
@@ -62,28 +64,27 @@ static bool parse_str(const char *str, ParseTable *table)
     }
     token_list[token_count++] = {TOKEN_End, nullptr, 0, 0};
 
-   return parse(token_list, token_count, table, 0, nullptr, nullptr, 0);
+    return true;
 }
 
 
+#include "common_test.cpp"
+
 int main(void)
 {
-    ParseTable *table = create_parse_table_from_bnf(bnf_source);
+    ParseTable *table = create_and_print_table(bnf_source);
 
-    // FILE *f = fopen("input.dot", "w");
-    // write_states_as_graph(f, state_list, state_count);
-    // fclose(f);
-    // print_table(table, Grammar, state_count);
 
-    assert_always(!parse_str("", table));
-    assert_always(!parse_str("abcd", table));
-    assert_always(parse_str("0", table));
-    assert_always(parse_str("00", table));
-    assert_always(parse_str("1", table));
-    assert_always(parse_str("11", table));
-    assert_always(parse_str("2492328501235823580", table));
-    assert_always(parse_str("323123", table));
-    assert_always(parse_str("6364859", table));
-    assert_always(parse_str("123456", table));
+    test_str(table, false, "", "INVALID, 0\nlookahead_lr_index: 10, state: 0\nUnexpected  token");
+    test_str(table, false, "abcd", "INVALID, 0\nlookahead_lr_index: 10, state: 0\nUnexpected  token");
+    test_str(table, true, "0", "SHIFT, 3\nREDUCE, 3\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "00", "SHIFT, 3\nREDUCE, 3\nREDUCE, 2\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "1", "SHIFT, 4\nREDUCE, 4\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "11", "SHIFT, 4\nREDUCE, 4\nREDUCE, 2\nSHIFT, 4\nREDUCE, 4\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "2492328501235823580", "SHIFT, 5\nREDUCE, 5\nREDUCE, 2\nSHIFT, 7\nREDUCE, 7\nREDUCE, 1\nSHIFT, 12\nREDUCE, 12\nREDUCE, 1\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 11\nREDUCE, 11\nREDUCE, 1\nSHIFT, 8\nREDUCE, 8\nREDUCE, 1\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nSHIFT, 4\nREDUCE, 4\nREDUCE, 1\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 8\nREDUCE, 8\nREDUCE, 1\nSHIFT, 11\nREDUCE, 11\nREDUCE, 1\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 8\nREDUCE, 8\nREDUCE, 1\nSHIFT, 11\nREDUCE, 11\nREDUCE, 1\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "323123", "SHIFT, 6\nREDUCE, 6\nREDUCE, 2\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 4\nREDUCE, 4\nREDUCE, 1\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "6364859", "SHIFT, 9\nREDUCE, 9\nREDUCE, 2\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 9\nREDUCE, 9\nREDUCE, 1\nSHIFT, 7\nREDUCE, 7\nREDUCE, 1\nSHIFT, 11\nREDUCE, 11\nREDUCE, 1\nSHIFT, 8\nREDUCE, 8\nREDUCE, 1\nSHIFT, 12\nREDUCE, 12\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "123456", "SHIFT, 4\nREDUCE, 4\nREDUCE, 2\nSHIFT, 5\nREDUCE, 5\nREDUCE, 1\nSHIFT, 6\nREDUCE, 6\nREDUCE, 1\nSHIFT, 7\nREDUCE, 7\nREDUCE, 1\nSHIFT, 8\nREDUCE, 8\nREDUCE, 1\nSHIFT, 9\nREDUCE, 9\nREDUCE, 1\nACCEPT\n");
+
     printf("Finished %s\n", __FILE__);
 }

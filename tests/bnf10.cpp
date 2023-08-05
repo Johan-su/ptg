@@ -101,8 +101,6 @@ static bool parse_str_to_token_list(const char *str)
 
 
 
-static char *file_to_str(const char *file_path);
-
 #include <stdlib.h>
 
 #include "common_test.cpp"
@@ -113,105 +111,21 @@ int main(void)
     assert_always(bnf_source != nullptr);
 
     ParseTable *table = create_and_print_table(bnf_source);
-    assert_always(false && "remove");
     free(bnf_source);
 
 
 
+    test_str(table, true, "", "REDUCE, 6\nREDUCE, 2\nACCEPT\n");
+    test_str(table, false, "()", "SHIFT, 7\nINVALID, 0\nlookahead_lr_index: 7, state: 7\nUnexpected ) token");
+    test_str(table, true, "1+1", "SHIFT, 8\nREDUCE, 10\nSHIFT, 17\nSHIFT, 8\nREDUCE, 10\nREDUCE, 19\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "1*1", "SHIFT, 8\nREDUCE, 10\nSHIFT, 15\nSHIFT, 8\nREDUCE, 10\nREDUCE, 17\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "1/1", "SHIFT, 8\nREDUCE, 10\nSHIFT, 14\nSHIFT, 8\nREDUCE, 10\nREDUCE, 16\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "1-1", "SHIFT, 8\nREDUCE, 10\nSHIFT, 16\nSHIFT, 8\nREDUCE, 10\nREDUCE, 18\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "-1+1", "SHIFT, 10\nSHIFT, 8\nREDUCE, 10\nREDUCE, 13\nSHIFT, 17\nSHIFT, 8\nREDUCE, 10\nREDUCE, 19\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "--1*1", "SHIFT, 10\nSHIFT, 10\nSHIFT, 8\nREDUCE, 10\nREDUCE, 13\nREDUCE, 13\nSHIFT, 15\nSHIFT, 8\nREDUCE, 10\nREDUCE, 17\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "--1^1^5", "SHIFT, 10\nSHIFT, 10\nSHIFT, 8\nREDUCE, 10\nREDUCE, 13\nREDUCE, 13\nSHIFT, 13\nSHIFT, 8\nREDUCE, 10\nREDUCE, 15\nSHIFT, 13\nSHIFT, 8\nREDUCE, 10\nREDUCE, 15\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", "SHIFT, 6\nSHIFT, 19\nSHIFT, 21\nSHIFT, 34\nSHIFT, 21\nREDUCE, 11\nSHIFT, 36\nREDUCE, 20\nREDUCE, 12\nSHIFT, 15\nSHIFT, 8\nREDUCE, 10\nREDUCE, 17\nSHIFT, 15\nSHIFT, 8\nREDUCE, 10\nREDUCE, 17\nSHIFT, 17\nSHIFT, 8\nREDUCE, 10\nREDUCE, 19\nSHIFT, 17\nSHIFT, 8\nREDUCE, 10\nSHIFT, 14\nSHIFT, 8\nREDUCE, 10\nREDUCE, 16\nSHIFT, 16\nSHIFT, 8\nREDUCE, 10\nREDUCE, 18\nREDUCE, 19\nSHIFT, 17\nSHIFT, 21\nSHIFT, 34\nSHIFT, 21\nREDUCE, 11\nSHIFT, 36\nREDUCE, 20\nREDUCE, 12\nREDUCE, 19\nREDUCE, 8\nREDUCE, 4\nREDUCE, 2\nACCEPT\n");
+    test_str(table, true, "++++1", "SHIFT, 11\nSHIFT, 11\nSHIFT, 11\nSHIFT, 11\nSHIFT, 8\nREDUCE, 10\nREDUCE, 14\nREDUCE, 14\nREDUCE, 14\nREDUCE, 14\nREDUCE, 5\nREDUCE, 2\nACCEPT\n");
 
-
-    test_str(table, true, "", "");
-    test_str(table, false, "()", "Unexpected ) token");
-    test_str(table, true, "1+1", "");
-    test_str(table, true, "1*1", "");
-    test_str(table, true, "1/1", "");
-    test_str(table, true, "1-1", "");
-    test_str(table, true, "-1+1", "");
-    test_str(table, true, "--1*1", "");
-    test_str(table, true, "--1^1^5", "");
-    test_str(table, true, "a=f(g)*44358340834683406*555543431265345348505+53492358+0/6-86546546546+h(c)", "");
-    test_str(table, true, "++++1", "nullptr");
-
-    fprintf(stderr, "%.*s\n", (int)sizeof(msg), msg);
     fprintf(stderr, "Finished %s\n", __FILE__);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#include <string.h>
-
-static char *file_to_str(const char *file_path)
-{
-    char *str = nullptr;
-    FILE *f = fopen(file_path, "rb");
-    if (f == nullptr)
-    {
-        fprintf(stderr, "ERROR: %s\n", strerror(errno));
-        return nullptr;
-    }
-
-    long file_size = -1;
-    if (fseek(f, 0, SEEK_END) != 0)
-    {
-        fprintf(stderr, "ERROR: failed to seek file %s\n", file_path);
-        goto end_close;
-    }
-    file_size = ftell(f);
-    if (file_size < 0)
-    {
-        goto end_close;
-    }
-    if (fseek(f, 0, SEEK_SET) != 0)
-    {
-        fprintf(stderr, "ERROR: failed to seek file %s\n", file_path);
-        goto end_close;
-    }
-    {
-        Usize buf_size = (Usize)file_size + 1; 
-        str = alloc(char, buf_size);
-    }
-    if (fread(str, sizeof(*str), (Usize)file_size, f) != (Usize)file_size)
-    {
-        fprintf(stderr, "ERROR: failed to read data from file %s\n", file_path);
-        free(str);
-        str = nullptr;
-    }
-
-    end_close:
-    if (fclose(f) == EOF)
-    {
-        fprintf(stderr, "ERROR: failed to close file %s\n", file_path);
-    }
-    return str;
 }

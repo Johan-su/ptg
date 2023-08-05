@@ -2,7 +2,6 @@
 #include <string.h>
 
 
-
 enum Token
 {
     TOKEN_plus,
@@ -23,31 +22,6 @@ static const char *bnf_source =
     "<E> := <E>'+'<E> | "
          "'0' | ;"
     ":";
-
-
-static bool is_alpha(char c)
-{
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
-static bool is_number(char c)
-{
-    return c >= '0' && c <= '9';
-}
-
-
-static bool is_whitespace(char c)
-{
-    switch (c)
-    {
-        case ' ': return true;
-        case '\r': return true;
-        case '\n': return true;
-        case '\t': return true;
-    
-        default: return false;
-    }
-}
 
 
 static ParseToken token_list[4096] = {};
@@ -87,8 +61,10 @@ int main(void)
 
 
 
-    test_str("0++", true, "", table);
+    test_str(table, true, "0++", "SHIFT, 2\nREDUCE, 2\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "+", "REDUCE, 3\nSHIFT, 3\nREDUCE, 3\nREDUCE, 1\nACCEPT\n");
+    test_str(table, true, "", "REDUCE, 3\nACCEPT\n");
+    test_str(table, false, "00", "SHIFT, 2\nINVALID, 0\nlookahead_lr_index: 1, state: 2\nUnexpected 0 token");
 
-    fprintf(stderr, "%.*s\n", (int)sizeof(msg), msg);
     fprintf(stderr, "Finished %s\n", __FILE__);
 }
